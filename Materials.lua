@@ -2,15 +2,15 @@
 
 local CF = CraftingForever
 
-CF.PROFESSIONS = { "mining", "herbalism", "skinning" }
-CF.PROF_LABEL = { mining = "Mining", herbalism = "Herbalism", skinning = "Skinning" }
+CF.PROFESSIONS = { "mining", "herbalism", "skinning", "fishing" }
 CF.PROF_ICON = {
   mining = "Interface\\Icons\\Trade_Mining",
   herbalism = "Interface\\Icons\\INV_Misc_Flower_02",
   skinning = "Interface\\Icons\\INV_Misc_Pelt_Wolf_01",
+  fishing = "Interface\\Icons\\Trade_Fishing",
 }
 
-CF.materials = {}        -- [key] = { key, prof, item, name, skill, nodes }
+CF.materials = {}        -- [key] = { key, prof, item, name (localized), nameEN, skill, nodes }
 CF.materialOrder = {}    -- [prof] = { key, ... } sorted by skill
 CF.nodeNameToMat = {}    -- [lowercase node name] = key
 CF.itemToMat = {}        -- [itemID] = key
@@ -25,15 +25,26 @@ end
 local function add(key, m)
   m.key = key
   CF.materials[key] = m
-  CF.itemToMat[m.item] = key
+  if m.item > 0 then CF.itemToMat[m.item] = key end
   if not CF.materialOrder[m.prof] then CF.materialOrder[m.prof] = {} end
   table.insert(CF.materialOrder[m.prof], key)
 end
 
+local objectNames = CF.LDB.objects or {}
 for key, d in pairs(CraftingForever_GatherDB) do
-  add(key, { prof = d.prof, item = d.item, name = d.name, skill = d.skill, nodes = d.nodes, zones = d.zones })
+  local name
+  if d.item > 0 then
+    name = CF.ItemNameByID(d.item, d.name)
+  else
+    name = objectNames[d.name] or d.name  -- itemless fishing pools: the pool's name
+  end
+  add(key, { prof = d.prof, item = d.item, name = name, nameEN = d.name, skill = d.skill,
+             nodes = d.nodes, zones = d.zones })
   for i = 1, table.getn(d.nodes) do
     CF.nodeNameToMat[string.lower(d.nodes[i])] = key
+    if objectNames[d.nodes[i]] then
+      CF.nodeNameToMat[string.lower(objectNames[d.nodes[i]])] = key
+    end
   end
 end
 
@@ -48,7 +59,8 @@ do
   end
   for key, d in pairs(CraftingForever_SkinDB.materials) do
     if minSkill[key] then
-      add(key, { prof = "skinning", item = d.item, name = d.name, skill = minSkill[key] })
+      add(key, { prof = "skinning", item = d.item, name = CF.ItemNameByID(d.item, d.name), nameEN = d.name,
+                 skill = minSkill[key] })
     end
   end
 end
@@ -66,6 +78,7 @@ end
 function CF.MaterialIcon(key)
   local m = CF.materials[key]
   if not m then return "Interface\\Icons\\INV_Misc_QuestionMark" end
+  if m.item == 0 then return CF.PROF_ICON[m.prof] end
   local tex = CF.db and CF.db.icons[m.item]
   if tex then return tex end
   local _, _, _, _, _, _, _, _, itemTex = GetItemInfo(m.item)

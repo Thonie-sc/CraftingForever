@@ -1,4 +1,4 @@
--- Records every node the player gathers (mining, herbalism, skinning) so it can
+-- Records every node the player gathers (mining, herbalism, skinning, fishing) so it can
 -- be marked on the maps and used by the route planner.
 --
 -- A gathering cast (SPELLCAST_START) remembers where the player stands and what
@@ -6,17 +6,29 @@
 
 local CF = CraftingForever
 
+-- Gathering spell names. Mining, Skinning and Fishing are cast with a spell named
+-- like the profession itself, so the localized profession names cover them;
+-- herbs are also recognised by the herb's name under the mouse.
 local GATHER_SPELLS = {
-  ["Mining"] = "mining",
-  ["Herb Gathering"] = "herbalism",
-  ["Skinning"] = "skinning",
+  ["Mining"] = "mining", ["Herb Gathering"] = "herbalism", ["Skinning"] = "skinning", ["Fishing"] = "fishing",
+  -- deDE
+  ["Bergbau"] = "mining", ["Kräutersammeln"] = "herbalism", ["Kürschnerei"] = "skinning", ["Angeln"] = "fishing",
+  -- esES
+  ["Minería"] = "mining", ["Recolección de hierbas"] = "herbalism", ["Desollar"] = "skinning", ["Pesca"] = "fishing",
 }
+for _, key in ipairs({ "mining", "skinning", "fishing" }) do
+  local name = CF.LDB.skills and CF.LDB.skills[key]
+  if name then GATHER_SPELLS[name] = key end
+end
 
-local MERGE_YARDS = { mining = 15, herbalism = 15, skinning = 30 }
+local MERGE_YARDS = { mining = 15, herbalism = 15, skinning = 30, fishing = 25 }
 
 CF.itemNameToMat = {}
 for key, m in pairs(CF.materials) do
-  CF.itemNameToMat[m.name] = key
+  if m.item > 0 then
+    CF.itemNameToMat[m.name] = key
+    CF.itemNameToMat[m.nameEN] = key
+  end
 end
 
 local pending
@@ -27,19 +39,23 @@ local function tooltipTitle()
   end
 end
 
-CF.RegisterEvent("SPELLCAST_START", function(spell)
+local function startGather(spell)
+  local title = tooltipTitle() or UnitName("mouseover")
   local prof = GATHER_SPELLS[spell]
+  local nodeMat = title and CF.nodeNameToMat[string.lower(title)]
+  if not prof and nodeMat then prof = CF.materials[nodeMat].prof end
   if not prof then return end
   local area, x, y = CF.PlayerPosition()
   if not area then
     pending = nil
     return
   end
-  pending = {
-    prof = prof, area = area, x = x, y = y, time = GetTime(),
-    title = tooltipTitle() or UnitName("mouseover"),
-  }
-end)
+  pending = { prof = prof, area = area, x = x, y = y, time = GetTime(), title = title }
+end
+
+CF.RegisterEvent("SPELLCAST_START", function(spell) startGather(spell) end)
+-- fishing is channelled: arg1 is the duration, arg2 the spell name
+CF.RegisterEvent("SPELLCAST_CHANNEL_START", function(_, spell) startGather(spell) end)
 
 local function cancel() pending = nil end
 CF.RegisterEvent("SPELLCAST_FAILED", cancel)
@@ -48,7 +64,9 @@ CF.RegisterEvent("SPELLCAST_INTERRUPTED", cancel)
 CF.RegisterEvent("LOOT_OPENED", function()
   local p = pending
   pending = nil
-  if not p or GetTime() - p.time > 15 then return end
+  -- fishing waits for a bite, so it gets the full channel time
+  local timeout = p and p.prof == "fishing" and 35 or 15
+  if not p or GetTime() - p.time > timeout then return end
 
   local key = p.title and CF.nodeNameToMat[string.lower(p.title)]
   for slot = 1, GetNumLootItems() do

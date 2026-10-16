@@ -3,7 +3,7 @@
 local CF = CraftingForever
 
 local G = {}       -- guide tab widgets/state
-local ROWS, ROW_H = 8, 38
+local ROWS, ROW_H = 7, 38
 
 local COLOR = {
   optimal = "|cffff8040", medium = "|cffffff00", easy = "|cff40bf40", trivial = "|cff808080",
@@ -47,7 +47,7 @@ end
 local function reagentText(step, crafts)
   local mats, real = CF.StepReagents(step)
   if not mats then
-    return "|cff888888Reagents unknown - open your profession window once to load them.|r"
+    return "|cff888888" .. CF.L["Reagents unknown - open your profession window once to load them."] .. "|r"
   end
   local parts = {}
   for i = 1, table.getn(mats) do
@@ -75,10 +75,10 @@ function CF.FindGuideRoute(step)
   end
   if results[1] then
     CF.SetActiveRoute(results[1])
-    CF.Print(string.format("Route: %s (%d stops). Open the world map to see it.",
-      CF.ZoneName(results[1].area), table.getn(results[1].points)))
+    CF.Print(string.format(CF.L["Route: %s, ~%d gathers/h. Open the world map to see it."],
+      CF.ZoneName(results[1].area), math.floor(results[1].perHour + 0.5)))
   else
-    CF.Print("No route found for this step.")
+    CF.Print(CF.L["No route found for this step."])
   end
   CF.ShowMainFrame("routes")
 end
@@ -91,7 +91,7 @@ local function updateSteps()
   local key = G.key
   local g = key and CF.Guides[key]
   if not g then
-    G.header:SetText("|cff888888No supported profession found on this character. Tick \"All guides\" to browse.|r")
+    G.header:SetText("|cff888888" .. CF.L["No supported profession found on this character. Tick \"All guides\" to browse."] .. "|r")
     G.hint:SetText("")
     for i = 1, ROWS do G.rows[i]:Hide() end
     FauxScrollFrame_Update(G.scroll, 0, ROWS, ROW_H)
@@ -102,9 +102,9 @@ local function updateSteps()
   local rank = p and p.rank or 0
   local _, current = CF.GuideStep(key, rank)
   if p then
-    G.header:SetText(string.format("%s  |cffffffff%d / %d|r", g.title, p.rank, p.max))
+    G.header:SetText(string.format("%s  |cffffffff%d / %d|r", CF.ProfName(key), p.rank, p.max))
   else
-    G.header:SetText(g.title .. "  |cff888888(not learned)|r")
+    G.header:SetText(CF.ProfName(key) .. "  |cff888888" .. CF.L["(not learned)"] .. "|r")
   end
   G.hint:SetText(CF.TrainerHint(key) or "")
 
@@ -122,15 +122,16 @@ local function updateSteps()
       local range = string.format("%d-%d", step.from, step.to)
       local line1, line2
       if g.kind == "gather" then
-        line1 = matNames(step) .. (step.text and ("  |cffaaaaaa" .. step.text .. "|r") or "")
+        line1 = matNames(step) .. (step.text and ("  |cffaaaaaa" .. CF.T(step.text) .. "|r") or "")
         line2 = zoneNames(step) or ""
         row.route:Show()
       else
         local left = p and craftsLeft(step, rank) or step.n
-        local color = COLOR[CF.cdb.recipeColor[step.craft] or ""] or "|cffffffff"
-        line1 = string.format("%s%s|r x%d", color, step.craft, left)
+        local craft = CF.ItemName(step.craft)
+        local color = COLOR[CF.cdb.recipeColor[craft] or ""] or "|cffffffff"
+        line1 = string.format("%s%s|r x%d", color, craft, left)
         local note = step[CF.PlayerFaction()] or step.text
-        if note then line1 = line1 .. "  |cffaaaaaa" .. note .. "|r" end
+        if note then line1 = line1 .. "  |cffaaaaaa" .. CF.T(note) .. "|r" end
         line2 = reagentText(step, left)
         row.route:Hide()
       end
@@ -155,7 +156,7 @@ local function updateGuideButtons()
     local key = list[i]
     if key then
       b.key = key
-      b:SetText(CF.Guides[key].title)
+      b:SetText(CF.ProfName(key))
       if key == G.key then b:LockHighlight() else b:UnlockHighlight() end
       b:Show()
     else
@@ -170,10 +171,10 @@ function CF.ui.BuildGuidePanel(p)
   G.panel = p
   G.buttons = {}
   for i = 1, table.getn(CF.GUIDE_ORDER) do
-    local b = CF.ui.Button(p, "", 96, 20)
+    local b = CF.ui.Button(p, "", 92, 20)
     local col = math.mod(i - 1, 5)
     local line = math.floor((i - 1) / 5)
-    b:SetPoint("TOPLEFT", p, "TOPLEFT", col * 98, -line * 22)
+    b:SetPoint("TOPLEFT", p, "TOPLEFT", col * 94, -line * 22)
     b:SetScript("OnClick", function()
       G.key = this.key
       getglobal("CraftingForeverGuideScrollScrollBar"):SetValue(0)
@@ -182,22 +183,22 @@ function CF.ui.BuildGuidePanel(p)
     G.buttons[i] = b
   end
 
-  local all = CF.ui.Check(p, "All guides",
+  local all = CF.ui.Check(p, CF.L["All guides"],
     function() return G.showAll end,
     function(v)
       G.showAll = v
       updateGuideButtons()
     end)
-  all:SetPoint("TOPRIGHT", p, "TOPRIGHT", -70, 0)
+  all:SetPoint("TOPLEFT", p, "TOPLEFT", 474, 0)
 
   G.header = CF.ui.Text(p, "GameFontNormalLarge")
-  G.header:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -50)
+  G.header:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -70)
   G.hint = CF.ui.Text(p, "GameFontNormalSmall")
   G.hint:SetPoint("LEFT", G.header, "RIGHT", 12, 0)
   G.hint:SetTextColor(1, 0.4, 0.4)
 
   local box = CreateFrame("Frame", nil, p)
-  box:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -72)
+  box:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -92)
   box:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", 0, 14)
   box:SetBackdrop({
     bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -229,7 +230,7 @@ function CF.ui.BuildGuidePanel(p)
     row.line2:SetPoint("TOPLEFT", row.line1, "BOTTOMLEFT", 0, -2)
     row.line2:SetWidth(410)
     row.line2:SetHeight(14)
-    row.route = CF.ui.Button(row, "Find route", 76, 20)
+    row.route = CF.ui.Button(row, CF.L["Find route"], 76, 20)
     row.route:SetPoint("RIGHT", row, "RIGHT", -2, 0)
     row.route:SetScript("OnClick", function() CF.FindGuideRoute(this:GetParent().step) end)
     G.rows[i] = row
@@ -237,7 +238,7 @@ function CF.ui.BuildGuidePanel(p)
 
   local foot = CF.ui.Text(p, "GameFontDisableSmall")
   foot:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", 2, 0)
-  foot:SetText("* reagents from the guide; opening your profession window loads the real recipe. Counts are bag totals / needed.")
+  foot:SetText(CF.L["* reagents from the guide; opening your profession window loads the real recipe. Counts are bag totals / needed."])
 
   p:SetScript("OnShow", updateGuideButtons)
 end
@@ -269,17 +270,18 @@ local function updateTracker()
         local zones = step.zones and step.zones[CF.PlayerFaction()]
         if zones and zones[1] then text = text .. " - " .. CF.ZoneName(zones[1]) end
       else
-        local color = COLOR[CF.cdb.recipeColor[step.craft] or ""] or "|cffffffff"
-        text = string.format("%s%s|r x%d", color, step.craft, craftsLeft(step, p.rank))
+        local craft = CF.ItemName(step.craft)
+        local color = COLOR[CF.cdb.recipeColor[craft] or ""] or "|cffffffff"
+        text = string.format("%s%s|r x%d", color, craft, craftsLeft(step, p.rank))
       end
       local line = tracker.lines[shown]
-      line:SetText(string.format("|cffffd100%s %d/%d|r: %s", g.title, p.rank, p.max, text))
+      line:SetText(string.format("|cffffd100%s %d/%d|r: %s", CF.ProfName(key), p.rank, p.max, text))
       line:Show()
     end
   end
   for i = shown + 1, TRACK_LINES do tracker.lines[i]:Hide() end
   if shown == 0 then
-    tracker.lines[1]:SetText("|cff888888No profession to level.|r")
+    tracker.lines[1]:SetText("|cff888888" .. CF.L["No profession to level."] .. "|r")
     tracker.lines[1]:Show()
     shown = 1
   end
@@ -310,7 +312,7 @@ local function createTracker()
 
   local title = CF.ui.Text(tracker, "GameFontNormalSmall")
   title:SetPoint("TOPLEFT", tracker, "TOPLEFT", 8, -6)
-  title:SetText("CraftingForever  |cff888888(right-click for guide)|r")
+  title:SetText("CraftingForever  |cff888888" .. CF.L["(right-click for guide)"] .. "|r")
 
   tracker.lines = {}
   for i = 1, TRACK_LINES do

@@ -36,7 +36,7 @@ local function pinOnEnter()
   GameTooltip:SetOwner(this, "ANCHOR_LEFT")
   local m = CF.materials[this.key]
   GameTooltip:AddLine(m and m.name or "?", 1, 1, 1)
-  if this.route then GameTooltip:AddLine("Route stop", 0.5, 0.8, 1) end
+  if this.route then GameTooltip:AddLine(CF.L["Route stop"], 0.5, 0.8, 1) end
   GameTooltip:Show()
 end
 
@@ -58,9 +58,9 @@ end
 
 local function routeKey(r, p)
   for i = 1, table.getn(r.keys) do
-    if p.mats[r.keys[i]] then return r.keys[i] end
+    if p.yield[r.keys[i]] then return r.keys[i] end
   end
-  for k in pairs(p.mats) do return k end
+  for k in pairs(p.yield) do return k end
 end
 
 local function update(force)

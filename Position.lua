@@ -7,6 +7,7 @@ CF.nameToArea = {}
 for area, z in pairs(CraftingForever_Zones) do
   CF.mapFileToArea[z[2]] = area
   CF.nameToArea[z[1]] = area
+  CF.nameToArea[CF.ZoneName(area)] = area
 end
 
 -- Area ID of the zone the world map currently displays (nil for continents,

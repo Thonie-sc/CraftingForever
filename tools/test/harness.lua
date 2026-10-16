@@ -1,7 +1,9 @@
 -- Offline test harness: runs the addon under a stock Lua 5.0 interpreter with a
 -- minimal mock of the 1.12 API, then exercises routes, gathering and the UI.
 --
---   lua5.0 tools/test/harness.lua        (from the addon folder)
+--   lua5.0 tools/test/harness.lua [enUS|deDE|esES]   (from the addon folder)
+
+LOCALE = arg and arg[1] or "enUS"
 
 -------------------------------------------------------------------------------
 -- mock API
@@ -75,10 +77,16 @@ SlashCmdList = {}
 local player = { x = 0.42, y = 0.65, map = "Elwynn", level = 12 }
 local skills = {
   { "Professions", true, true },
-  { "Mining", false, false, 72, 0, 0, 150 },
-  { "Skinning", false, false, 40, 0, 0, 75 },
-  { "Alchemy", false, false, 112, 0, 0, 150 },
+  { "mining", false, false, 72, 0, 0, 150 },
+  { "skinning", false, false, 40, 0, 0, 75 },
+  { "alchemy", false, false, 112, 0, 0, 150 },
+  { "fishing", false, false, 150, 0, 0, 150 },
 }
+local ENGLISH = { mining = "Mining", skinning = "Skinning", alchemy = "Alchemy", fishing = "Fishing" }
+local function skillName(key)
+  local db = CraftingForever_LocaleDB[LOCALE]
+  return db and db.skills[key] or ENGLISH[key] or key
+end
 
 function UnitLevel() return player.level end
 function UnitFactionGroup() return "Alliance" end
@@ -98,7 +106,11 @@ function GetContainerNumSlots() return 0 end
 function GetContainerItemLink() return nil end
 function GetContainerItemInfo() return nil end
 function GetNumSkillLines() return table.getn(skills) end
-function GetSkillLineInfo(i) return unpack(skills[i]) end
+function GetSkillLineInfo(i)
+  local s = skills[i]
+  return (s[2] and s[1] or skillName(s[1])), s[2], s[3], s[4], s[5], s[6], s[7]
+end
+function GetLocale() return LOCALE end
 function ExpandSkillHeader() end
 function CollapseSkillHeader() end
 function GetNumTradeSkills() return 0 end
@@ -159,33 +171,49 @@ local function show(results, label)
   print("  " .. label)
   for i = 1, math.min(5, table.getn(results)) do
     local r = results[i]
-    local counts = {}
-    for k, v in pairs(r.counts) do table.insert(counts, k .. "=" .. v) end
-    print(string.format("    %d. %-22s stops %3d  len %6d yd  %.1f/1k  score %.2f  [%s]", i,
-      CF.ZoneName(r.area), table.getn(r.points), r.length, r.density, r.score, table.concat(counts, " ")))
+    local mats = {}
+    for k, v in pairs(r.perMat) do table.insert(mats, string.format("%s=%.0f", k, v)) end
+    print(string.format("    %d. %-22s %-34s stops %3d  lap %6s  %5.1f/h  [%s]", i,
+      CF.ZoneName(r.area), CF.ui.ScopeText(r), table.getn(r.points), CF.FormatTime(r.lap), r.perHour,
+      table.concat(mats, " ")))
   end
 end
 
 local t0 = os.clock()
 local res = CF.FindRoutes({ "copper" })
-show(res, string.format("copper (level 12 Alliance) - %.3fs", os.clock() - t0))
+show(res, string.format("copper (level 12 Alliance, on foot) - %.3fs", os.clock() - t0))
 check(table.getn(res) > 0, "copper routes found")
 for i = 1, table.getn(res) do
   local z = CraftingForever_Zones[res[i].area]
   check(z[6] ~= "H", "no horde territory in alliance results: " .. z[1])
+  check(res[i].perHour > 0 and res[i].lap > 0, "yield and lap computed")
+end
+for i = 2, table.getn(res) do
+  check(res[i - 1].score >= res[i].score, "results sorted by score")
 end
 
 t0 = os.clock()
 res = CF.FindRoutes({ "copper", "tin" })
 show(res, string.format("copper + tin - %.3fs", os.clock() - t0))
-check(res[1].counts.copper and res[1].counts.tin, "best combined route has both copper and tin")
+check(res[1].perMat.copper and res[1].perMat.tin, "best combined route yields both copper and tin")
 
 CF.settings.hideHighZones = false
+player.level = 50
 t0 = os.clock()
 res = CF.FindRoutes({ "mithril", "truesilver" })
-show(res, string.format("mithril + truesilver (no level filter) - %.3fs", os.clock() - t0))
-check(table.getn(res) > 0, "mithril routes")
+show(res, string.format("mithril + truesilver (level 50, mounted) - %.3fs", os.clock() - t0))
+check(table.getn(res) > 0 and res[1].mounted, "mithril routes, mounted")
 
+t0 = os.clock()
+res = CF.FindRoutes({ "thorium" })
+show(res, string.format("thorium - %.3fs", os.clock() - t0))
+
+t0 = os.clock()
+res = CF.FindRoutes({ "blackmouth", "firefin", "wreckage" })
+show(res, string.format("fishing pools - %.3fs", os.clock() - t0))
+check(table.getn(res) > 0, "fishing pool routes")
+
+player.level = 12
 t0 = os.clock()
 res = CF.FindRoutes({ "peacebloom", "silverleaf", "earthroot" })
 show(res, string.format("starter herbs - %.3fs", os.clock() - t0))
@@ -195,6 +223,14 @@ t0 = os.clock()
 res = CF.FindRoutes({ "lightleather" })
 show(res, string.format("light leather (skinning 40) - %.3fs", os.clock() - t0))
 check(table.getn(res) > 0, "skinning routes")
+
+-- the yield model: a longer loop of the same points never yields more per hour
+do
+  local pts = res[1].points
+  local T1, h1 = CF.EstimateYield(pts, 5000, 7)
+  local T2, h2 = CF.EstimateYield(pts, 20000, 7)
+  check(T2 > T1 and h2 <= h1, "longer loop -> longer lap, not more per hour")
+end
 
 t0 = os.clock()
 local before = res[1].length
@@ -209,43 +245,63 @@ check(CF.Count(seen) == table.getn(CF.activeRoute.points), "tour visits every st
 -- gathering
 -------------------------------------------------------------------------------
 
+local M = CF.materials
+local mining = skillName("mining")
 GameTooltip._shown = true
-GameTooltipTextLeft1._text = "Copper Vein"
-fire("SPELLCAST_START", "Mining", 5000)
-loot = { "Copper Ore", "Rough Stone" }
+GameTooltipTextLeft1._text = (CF.LDB.objects and CF.LDB.objects["Copper Vein"]) or "Copper Vein"
+fire("SPELLCAST_START", mining, 5000)
+loot = { M.copper.name, "Rough Stone" }
 now = now + 5
 fire("LOOT_OPENED")
 check(CF.db.nodes[12] and CF.db.nodes[12].copper and table.getn(CF.db.nodes[12].copper) == 1, "copper vein recorded in Elwynn")
 
 -- same vein again merges
-fire("SPELLCAST_START", "Mining", 5000)
+fire("SPELLCAST_START", mining, 5000)
 now = now + 5
 fire("LOOT_OPENED")
 check(table.getn(CF.db.nodes[12].copper) == 1 and CF.db.nodes[12].copper[1][3] == 2, "repeat gather merges into one node")
 
--- unknown tooltip falls back to the loot
-GameTooltip._shown = false
+-- herbs: recognised by the herb under the mouse, whatever the spell is called
+GameTooltip._shown = true
+GameTooltipTextLeft1._text = M.silverleaf.name
 player.x = 0.50
-fire("SPELLCAST_START", "Herb Gathering", 5000)
-loot = { "Silverleaf" }
+fire("SPELLCAST_START", "Some Localized Herb Spell", 5000)
+loot = { M.silverleaf.name }
 now = now + 5
 fire("LOOT_OPENED")
-check(CF.db.nodes[12].silverleaf and table.getn(CF.db.nodes[12].silverleaf) == 1, "herb recorded from loot window")
+check(CF.db.nodes[12].silverleaf and table.getn(CF.db.nodes[12].silverleaf) == 1, "herb recorded")
+GameTooltip._shown = false
 
 -- interrupted cast records nothing
-fire("SPELLCAST_START", "Mining", 5000)
+fire("SPELLCAST_START", mining, 5000)
 fire("SPELLCAST_INTERRUPTED")
-loot = { "Tin Ore" }
+loot = { M.tin.name }
 fire("LOOT_OPENED")
 check(not CF.db.nodes[12].tin, "interrupted cast ignored")
 
 -- skinning from loot
 player.x = 0.30
-fire("SPELLCAST_START", "Skinning", 2000)
-loot = { "Light Leather", "Ruined Leather Scraps" }
+fire("SPELLCAST_START", skillName("skinning"), 2000)
+loot = { M.lightleather.name, M.ruinedscraps.name }
 now = now + 3
 fire("LOOT_OPENED")
 check(CF.db.nodes[12].lightleather and table.getn(CF.db.nodes[12].lightleather) == 1, "skinned mob recorded")
+
+-- a non-gathering cast followed by looting leather from a corpse is ignored
+fire("SPELLCAST_START", "Fireball", 3000)
+player.x = 0.70
+loot = { M.lightleather.name }
+now = now + 3
+fire("LOOT_OPENED")
+check(table.getn(CF.db.nodes[12].lightleather) == 1, "unrelated cast + loot ignored")
+
+-- fishing is channelled and records the catch's pool type
+player.x = 0.80
+fire("SPELLCAST_CHANNEL_START", 30000, skillName("fishing"))
+loot = { M.blackmouth.name }
+now = now + 20
+fire("LOOT_OPENED")
+check(CF.db.nodes[12].blackmouth and table.getn(CF.db.nodes[12].blackmouth) == 1, "fishing catch recorded")
 
 -- learned nodes feed the planner
 res = CF.FindRoutes({ "copper" }, { [12] = true })
@@ -271,9 +327,67 @@ CF.FindGuideRoute(step)
 check(CF.activeRoute and CF.activeRoute.counts.tin, "guide 'Find route' activates a tin route")
 local astep = CF.GuideStep("alchemy", 112)
 check(astep.craft == "Healing Potion", "alchemy step for 112")
+local reagents = CF.StepReagents(astep)
+print("  alchemy 112 reagents: " .. reagents[1][1] .. ", " .. reagents[2][1] .. ", " .. reagents[3][1])
+check(CF.TrainerHint("fishing") ~= nil, "fishing capped at 150 -> trainer hint")
+print("  hint: " .. CF.TrainerHint("fishing"))
+check(not string.find(CF.TrainerHint("fishing"), "{"), "tokens replaced in hints")
+for _, key in ipairs(CF.GUIDE_ORDER) do
+  check(CF.Guides[key] and table.getn(CF.Guides[key].steps) > 0, "guide " .. key)
+end
 CF.ToggleTracker()
 CF.ToggleTracker()
 SlashCmdList["CRAFTINGFOREVER"]("help")
 check(true, "UI builds and updates")
 
-print("\nall tests passed")
+-------------------------------------------------------------------------------
+-- translations
+-------------------------------------------------------------------------------
+
+local function specifiers(str)
+  local out = {}
+  for f in string.gfind(str, "%%[%a%%]") do table.insert(out, f) end
+  return table.concat(out)
+end
+
+local function tokens(str)
+  local out = {}
+  for t in string.gfind(str, "{%a+:[^}]+}") do table.insert(out, t) end
+  table.sort(out)
+  return table.concat(out)
+end
+
+if LOCALE ~= "enUS" then
+  local keys = {}
+  local files = { "Core.lua", "UI.lua", "GuideUI.lua", "MapPins.lua", "Minimap.lua", "Data/Guides.lua" }
+  for _, f in ipairs(files) do
+    local fh = io.open(f)
+    local src = fh:read("*a")
+    fh:close()
+    for k in string.gfind(src, 'CF%.L%["(.-[^\\])"%]') do keys[string.gsub(k, '\\"', '"')] = true end
+  end
+  -- guide notes and labels
+  for _, g in pairs(CF.Guides) do
+    for _, st in ipairs(g.steps) do
+      for _, f in ipairs({ "text", "A", "H" }) do if st[f] then keys[st[f]] = true end end
+    end
+    for _, note in pairs(g.ranks or {}) do
+      if type(note) == "table" then keys[note.A] = true keys[note.H] = true else keys[note] = true end
+    end
+  end
+  for _, r in ipairs(CF.TRAINER_RANKS) do keys[r.rank] = true end
+  for _, k in ipairs({ "Routes", "Leveling Guide", "Show gathered nodes", "Show route", "Minimap icons" }) do keys[k] = true end
+  local tr = CF.TRANSLATIONS[LOCALE]
+  for k in pairs(keys) do
+    check(tr[k] ~= nil, LOCALE .. " translation: " .. k)
+    if tr[k] then
+      check(specifiers(tr[k]) == specifiers(k), LOCALE .. " format specifiers match: " .. k)
+      check(tokens(tr[k]) == tokens(k), LOCALE .. " tokens match: " .. k)
+    end
+  end
+  for k in pairs(tr) do check(keys[k], LOCALE .. " translation is used: " .. k) end
+  check(CF.ZoneName(12) ~= "Elwynn Forest", "zone names localized: " .. CF.ZoneName(12))
+  check(CF.materials.copper.name ~= "Copper Ore", "material names localized: " .. CF.materials.copper.name)
+end
+
+print("\nall tests passed (" .. LOCALE .. ")")

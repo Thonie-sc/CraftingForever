@@ -19,14 +19,16 @@ local function pinOnEnter()
   tt:AddLine(m and m.name or "?", 1, 1, 1)
   if this.learned then
     local n = this.learned
-    tt:AddLine(string.format("Gathered %d time%s", n[3] or 1, (n[3] or 1) == 1 and "" or "s"), 0.8, 0.8, 0.8)
-    if n[4] then tt:AddLine("Last: " .. date("%Y-%m-%d %H:%M", n[4]), 0.8, 0.8, 0.8) end
+    tt:AddLine(string.format(CF.L["Gathered %d time(s)"], n[3] or 1), 0.8, 0.8, 0.8)
+    if n[4] then tt:AddLine(CF.L["Last:"] .. " " .. date("%Y-%m-%d %H:%M", n[4]), 0.8, 0.8, 0.8) end
   else
     if this.mob then
       local mob = CraftingForever_SkinDB.mobs[this.mob]
-      if mob then tt:AddLine(string.format("%s (level %d-%d)", mob[1], mob[2], mob[3]), 0.8, 0.8, 0.8) end
+      if mob then
+        tt:AddLine(string.format(CF.L["%s (level %d-%d)"], CF.MobName(this.mob), mob[2], mob[3]), 0.8, 0.8, 0.8)
+      end
     end
-    if this.index then tt:AddLine("Route stop " .. this.index, 0.5, 0.8, 1) end
+    if this.index then tt:AddLine(string.format(CF.L["Route stop %d"], this.index), 0.5, 0.8, 1) end
   end
   tt:Show()
 end
@@ -74,9 +76,9 @@ end
 -- icon key for a route point: first selected material available there
 local function pointKey(r, p)
   for i = 1, table.getn(r.keys) do
-    if p.mats[r.keys[i]] then return r.keys[i] end
+    if p.yield[r.keys[i]] then return r.keys[i] end
   end
-  for k in pairs(p.mats) do return k end
+  for k in pairs(p.yield) do return k end
 end
 
 local function drawRoute(r, w, h)

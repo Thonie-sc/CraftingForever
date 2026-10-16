@@ -3,7 +3,7 @@
 
 local CF = CraftingForever
 
--- english skill line name -> guide key
+-- skill line name -> profession key (english plus the client's language)
 local SKILL_KEYS = {
   ["Mining"] = "mining",
   ["Herbalism"] = "herbalism",
@@ -18,6 +18,19 @@ local SKILL_KEYS = {
   ["Cooking"] = "cooking",
   ["Fishing"] = "fishing",
 }
+for key, name in pairs(CF.LDB.skills or {}) do
+  SKILL_KEYS[name] = key
+end
+
+-- localized profession name for display
+function CF.ProfName(key)
+  local loc = CF.LDB.skills and CF.LDB.skills[key]
+  if loc then return loc end
+  for name, k in pairs(SKILL_KEYS) do
+    if k == key and not string.find(name, "[^%a ]") then return name end
+  end
+  return key
+end
 
 CF.profs = {}  -- [key] = { rank = n, max = n, name = "Mining" }
 

@@ -107,11 +107,11 @@ local function createMainFrame()
   local x = 20
   for _, def in ipairs({ { "routes", "Routes" }, { "guide", "Leveling Guide" } }) do
     local key = def[1]
-    local t = CF.ui.Button(frame, def[2], 120, 22)
+    local t = CF.ui.Button(frame, CF.L[def[2]], 140, 22)
     t:SetPoint("TOPLEFT", frame, "TOPLEFT", x, -40)
     t:SetScript("OnClick", function() selectTab(key) end)
     tabs[key] = t
-    x = x + 124
+    x = x + 144
 
     local p = CreateFrame("Frame", nil, frame)
     p:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -66)
@@ -158,12 +158,12 @@ CF.SelectedKeys = selectedKeys
 local function updateSelectedText()
   local keys = selectedKeys()
   if table.getn(keys) == 0 then
-    R.selectedText:SetText("|cff888888Select one or more materials on the left.|r")
+    R.selectedText:SetText("|cff888888" .. CF.L["Select one or more materials on the left."] .. "|r")
     return
   end
   local names = {}
   for i = 1, table.getn(keys) do table.insert(names, CF.materials[keys[i]].name) end
-  R.selectedText:SetText("Selected: |cffffffff" .. table.concat(names, ", ") .. "|r")
+  R.selectedText:SetText(CF.L["Selected:"] .. " |cffffffff" .. table.concat(names, ", ") .. "|r")
 end
 
 local function updateMatList()
@@ -194,8 +194,15 @@ local function updateMatList()
   for p, b in pairs(R.profButtons) do
     if p == R.prof then b:LockHighlight() else b:UnlockHighlight() end
   end
+  R.profLabel:SetText(CF.ProfName(R.prof) .. (rank and ("  |cffffffff" .. rank .. "|r") or ""))
   updateSelectedText()
 end
+
+local function scopeText(r)
+  if not r.scope then return CF.L["whole zone"] end
+  return string.format(CF.L["around %d, %d (%d yd radius)"], r.scope.x, r.scope.y, r.scope.radius)
+end
+CF.ui.ScopeText = scopeText
 
 local function updateResults()
   local active = CF.activeRoute
@@ -204,19 +211,17 @@ local function updateResults()
     local r = R.results[i]
     if r then
       local z = CraftingForever_Zones[r.area]
-      local lap = r.length / CF.RUN_SPEED
       row.r = r
-      row.line1:SetText(string.format("%d. |cffffd100%s|r (%d-%d)  %d stops, %d yd, lap %s on foot / %s mounted",
-        i, z[1], z[4], z[5], table.getn(r.points), math.floor(r.length),
-        CF.FormatTime(lap), CF.FormatTime(r.length / CF.MOUNT_SPEED)))
+      row.line1:SetText(string.format("%d. |cffffd100%s|r (%d-%d) - %s", i, CF.ZoneName(r.area), z[4], z[5], scopeText(r)))
       local parts = {}
       for j = 1, table.getn(r.keys) do
         local k = r.keys[j]
-        local c = r.counts[k] or 0
-        local color = c > 0 and "ffffff" or "ff4040"
-        table.insert(parts, string.format("|cff%s%s %d|r", color, CF.materials[k].name, c))
+        local v = r.perMat[k] or 0
+        local color = v >= 0.5 and "ffffff" or "ff4040"
+        table.insert(parts, string.format("|cff%s%s %d|r", color, CF.materials[k].name, math.floor(v + 0.5)))
       end
-      row.line2:SetText(string.format("%.1f nodes / 1000 yd  -  %s", r.density, table.concat(parts, ", ")))
+      row.line2:SetText(string.format(CF.L["~%d gathers/h, lap %s, %d stops"], math.floor(r.perHour + 0.5),
+        CF.FormatTime(r.lap), table.getn(r.points)) .. " - " .. table.concat(parts, ", "))
       if active and active.area == r.area and active.keys == r.keys then row.sel:Show() else row.sel:Hide() end
       row:Show()
     else
@@ -224,10 +229,10 @@ local function updateResults()
     end
   end
   if table.getn(R.results) == 0 and R.searched then
-    R.status:SetText("|cffff8040No routes found. Try other materials or untick the zone filters.|r")
+    R.status:SetText("|cffff8040" .. CF.L["No routes found. Try other materials or untick the zone filters."] .. "|r")
   elseif active then
-    R.status:SetText(string.format("Active route: |cffffffff%s|r, %d stops, %d yd. Shown on the world map and minimap.",
-      CF.ZoneName(active.area), table.getn(active.points), math.floor(active.length)))
+    R.status:SetText(string.format(CF.L["Active: %s, ~%d gathers/h, lap %s."],
+      CF.ZoneName(active.area), math.floor(active.perHour + 0.5), CF.FormatTime(active.lap)))
   else
     R.status:SetText("")
   end
@@ -243,28 +248,41 @@ end
 local function search()
   local keys = selectedKeys()
   if table.getn(keys) == 0 then
-    CF.Print("Select at least one material first.")
+    CF.Print(CF.L["Select at least one material first."])
     return
   end
   CF.ui.RunRouteSearch(keys)
 end
 
 function CF.ui.BuildRoutesPanel(p)
-  -- profession filter
+  -- profession filter: icon buttons
   R.profButtons = {}
-  local x = 0
   for i = 1, table.getn(CF.PROFESSIONS) do
     local prof = CF.PROFESSIONS[i]
-    local b = CF.ui.Button(p, CF.PROF_LABEL[prof], 78, 20)
-    b:SetPoint("TOPLEFT", p, "TOPLEFT", x, 0)
+    local b = CreateFrame("Button", nil, p)
+    b:SetWidth(22)
+    b:SetHeight(22)
+    b:SetPoint("TOPLEFT", p, "TOPLEFT", (i - 1) * 25, 0)
+    b:SetNormalTexture(CF.PROF_ICON[prof])
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
+    hl:SetBlendMode("ADD")
+    hl:SetAllPoints(b)
     b:SetScript("OnClick", function()
       R.prof = prof
       getglobal("CraftingForeverMatScrollScrollBar"):SetValue(0)
       updateMatList()
     end)
+    b:SetScript("OnEnter", function()
+      GameTooltip:SetOwner(this, "ANCHOR_TOP")
+      GameTooltip:AddLine(CF.ProfName(prof))
+      GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     R.profButtons[prof] = b
-    x = x + 80
   end
+  R.profLabel = CF.ui.Text(p, "GameFontNormal")
+  R.profLabel:SetPoint("TOPLEFT", p, "TOPLEFT", table.getn(CF.PROFESSIONS) * 25 + 6, -4)
 
   -- material list
   local listBox = CreateFrame("Frame", nil, p)
@@ -312,15 +330,20 @@ function CF.ui.BuildRoutesPanel(p)
       local m = CF.materials[this.key]
       GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
       GameTooltip:AddLine(m.name, 1, 1, 1)
-      GameTooltip:AddLine(string.format("%s skill %d", CF.PROF_LABEL[m.prof], m.skill), 0.8, 0.8, 0.8)
-      if m.nodes then GameTooltip:AddLine(table.concat(m.nodes, ", "), 0.6, 0.6, 0.6, 1) end
+      GameTooltip:AddLine(string.format("%s %d", CF.ProfName(m.prof), m.skill), 0.8, 0.8, 0.8)
+      if m.nodes then
+        local names = {}
+        local objects = CF.LDB.objects or {}
+        for j = 1, table.getn(m.nodes) do table.insert(names, objects[m.nodes[j]] or m.nodes[j]) end
+        GameTooltip:AddLine(table.concat(names, ", "), 0.6, 0.6, 0.6, 1)
+      end
       GameTooltip:Show()
     end)
     row:SetScript("OnLeave", function() GameTooltip:Hide() end)
     R.matRows[i] = row
   end
 
-  local clearSel = CF.ui.Button(p, "Clear selection", 116, 20)
+  local clearSel = CF.ui.Button(p, CF.L["Clear selection"], 130, 20)
   clearSel:SetPoint("TOPLEFT", listBox, "BOTTOMLEFT", 0, -4)
   clearSel:SetScript("OnClick", function()
     CF.cdb.selected = {}
@@ -336,7 +359,7 @@ function CF.ui.BuildRoutesPanel(p)
   local prev = clearSel
   for i = 1, table.getn(opts) do
     local label, setting = opts[i][1], opts[i][2]
-    local c = CF.ui.Check(p, label,
+    local c = CF.ui.Check(p, CF.L[label],
       function() return CF.settings[setting] end,
       function(v)
         CF.settings[setting] = v
@@ -358,18 +381,22 @@ function CF.ui.BuildRoutesPanel(p)
   R.selectedText:SetHeight(28)
   R.selectedText:SetJustifyV("TOP")
 
-  local find = CF.ui.Button(right, "Find best routes", 130, 24)
+  local find = CF.ui.Button(right, CF.L["Find best routes"], 140, 24)
   find:SetPoint("TOPLEFT", right, "TOPLEFT", 0, -32)
   find:SetScript("OnClick", search)
 
-  local hideHigh = CF.ui.Check(right, "Hide high-level zones",
+  local hideHigh = CF.ui.Check(right, CF.L["Hide high-level zones"],
     function() return CF.settings.hideHighZones end,
     function(v) CF.settings.hideHighZones = v end)
   hideHigh:SetPoint("TOPLEFT", find, "TOPRIGHT", 8, 1)
-  local hideEnemy = CF.ui.Check(right, "Hide enemy territory",
+  local hideEnemy = CF.ui.Check(right, CF.L["Hide enemy territory"],
     function() return CF.settings.hideEnemyZones end,
     function(v) CF.settings.hideEnemyZones = v end)
   hideEnemy:SetPoint("TOPLEFT", hideHigh, "BOTTOMLEFT", 0, 6)
+  local mounted = CF.ui.Check(right, CF.L["Mounted"],
+    function() return CF.IsMounted() end,
+    function(v) CF.settings.mounted = v end)
+  mounted:SetPoint("TOPLEFT", find, "BOTTOMLEFT", 0, -2)
 
   R.resultRows = {}
   for i = 1, RESULT_ROWS do
@@ -382,9 +409,11 @@ function CF.ui.BuildRoutesPanel(p)
     row.line1 = CF.ui.Text(row, "GameFontHighlightSmall")
     row.line1:SetPoint("TOPLEFT", row, "TOPLEFT", 2, -2)
     row.line1:SetWidth(344)
+    row.line1:SetHeight(14)
     row.line2 = CF.ui.Text(row, "GameFontDisableSmall")
     row.line2:SetPoint("TOPLEFT", row.line1, "BOTTOMLEFT", 0, -2)
     row.line2:SetWidth(344)
+    row.line2:SetHeight(14)
     row:SetScript("OnClick", function()
       CF.SetActiveRoute(this.r)
       updateResults()
@@ -397,12 +426,12 @@ function CF.ui.BuildRoutesPanel(p)
     R.resultRows[i] = row
   end
 
-  local showMap = CF.ui.Button(right, "Show on map", 110, 22)
+  local showMap = CF.ui.Button(right, CF.L["Show on map"], 116, 22)
   showMap:SetPoint("BOTTOMLEFT", right, "BOTTOMLEFT", 0, 22)
   showMap:SetScript("OnClick", function()
     if CF.activeRoute then CF.ShowZoneOnMap(CF.activeRoute.area) end
   end)
-  local clear = CF.ui.Button(right, "Clear route", 110, 22)
+  local clear = CF.ui.Button(right, CF.L["Clear route"], 116, 22)
   clear:SetPoint("LEFT", showMap, "RIGHT", 6, 0)
   clear:SetScript("OnClick", function()
     CF.SetActiveRoute(nil)
@@ -474,8 +503,8 @@ CF.On("INIT", function()
   b:SetScript("OnEnter", function()
     GameTooltip:SetOwner(this, "ANCHOR_LEFT")
     GameTooltip:AddLine("CraftingForever")
-    GameTooltip:AddLine("Left-click: routes & guides", 0.8, 0.8, 0.8)
-    GameTooltip:AddLine("Right-click: toggle guide tracker", 0.8, 0.8, 0.8)
+    GameTooltip:AddLine(CF.L["Left-click: routes & guides"], 0.8, 0.8, 0.8)
+    GameTooltip:AddLine(CF.L["Right-click: toggle guide tracker"], 0.8, 0.8, 0.8)
     GameTooltip:Show()
   end)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)

@@ -4,7 +4,7 @@
 CraftingForever = CraftingForever or {}
 local CF = CraftingForever
 
-CF.version = "0.1.0"
+CF.version = "0.2.0"
 CF.name = "CraftingForever"
 
 local DEFAULTS = {
@@ -41,6 +41,8 @@ function CF.Distance(area, x1, y1, x2, y2)
 end
 
 function CF.ZoneName(area)
+  local loc = CF.LDB and CF.LDB.zones and CF.LDB.zones[area]
+  if loc then return loc end
   local z = CraftingForever_Zones[area]
   return z and z[1] or ("Zone " .. tostring(area))
 end
@@ -142,12 +144,12 @@ SlashCmdList["CRAFTINGFOREVER"] = function(msg)
     CF.ToggleTracker()
   elseif cmd == "clear" then
     CF.SetActiveRoute(nil)
-    CF.Print("Route cleared.")
+    CF.Print(CF.L["Route cleared."])
   elseif cmd == "resetnodes" then
     CF.db.nodes = {}
     CF.Fire("NODES_UPDATED")
-    CF.Print("All gathered nodes have been removed.")
+    CF.Print(CF.L["All gathered nodes have been removed."])
   else
-    CF.Print("/cf - toggle window, /cf routes, /cf guide, /cf tracker, /cf clear (route), /cf resetnodes")
+    CF.Print(CF.L["/cf - toggle window, /cf routes, /cf guide, /cf tracker, /cf clear (route), /cf resetnodes"])
   end
 end

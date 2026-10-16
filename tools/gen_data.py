@@ -10,10 +10,13 @@ Sources (not shipped with the addon, pass their paths on the command line):
 Usage:
   python3 tools/gen_data.py <pfQuest/db> <ClassicDB_*.sql or .sql.gz>
 
-Writes Data/Zones.lua, Data/Nodes.lua and Data/Skinning.lua.
+Writes Data/Zones.lua, Data/Nodes.lua, Data/Skinning.lua and Data/Locale.lua.
+Data/Locale.lua also maps the item/NPC/place names used in Data/Guides.lua, so
+re-run this after editing the guides.
 """
 import gzip
 import os
+import re
 import sys
 from collections import defaultdict
 
@@ -68,53 +71,67 @@ ZONES = {
     1377: ("Silithus", 1, 55, 60, "C"),
 }
 
-# material key -> (profession, itemID, english item name, [gathering object names])
+# material key -> (profession, english item name or None, [gathering object names], skill)
+# skill None = take it from pfQuest's mines/herbs meta data.
 GATHER = {
     # Mining
-    "copper": ("mining", 2770, "Copper Ore", ["Copper Vein"]),
-    "tin": ("mining", 2771, "Tin Ore", ["Tin Vein"]),
-    "incendicite": ("mining", 3340, "Incendicite Ore", ["Incendicite Mineral Vein"]),
-    "silver": ("mining", 2775, "Silver Ore", ["Silver Vein", "Ooze Covered Silver Vein"]),
-    "bloodstone": ("mining", 4278, "Lesser Bloodstone Ore", ["Lesser Bloodstone Deposit"]),
-    "iron": ("mining", 2772, "Iron Ore", ["Iron Deposit", "Ooze Covered Iron Deposit"]),
-    "gold": ("mining", 2776, "Gold Ore", ["Gold Vein", "Ooze Covered Gold Vein"]),
-    "mithril": ("mining", 3858, "Mithril Ore", ["Mithril Deposit", "Ooze Covered Mithril Deposit"]),
-    "truesilver": ("mining", 7911, "Truesilver Ore",
-                   ["Truesilver Deposit", "Ooze Covered Truesilver Deposit"]),
-    "darkiron": ("mining", 11370, "Dark Iron Ore", ["Dark Iron Deposit"]),
-    "thorium": ("mining", 10620, "Thorium Ore",
+    "copper": ("mining", "Copper Ore", ["Copper Vein"], None),
+    "tin": ("mining", "Tin Ore", ["Tin Vein"], None),
+    "incendicite": ("mining", "Incendicite Ore", ["Incendicite Mineral Vein"], None),
+    "silver": ("mining", "Silver Ore", ["Silver Vein", "Ooze Covered Silver Vein"], None),
+    "bloodstone": ("mining", "Lesser Bloodstone Ore", ["Lesser Bloodstone Deposit"], None),
+    "iron": ("mining", "Iron Ore", ["Iron Deposit", "Ooze Covered Iron Deposit"], None),
+    "gold": ("mining", "Gold Ore", ["Gold Vein", "Ooze Covered Gold Vein"], None),
+    "mithril": ("mining", "Mithril Ore", ["Mithril Deposit", "Ooze Covered Mithril Deposit"], None),
+    "truesilver": ("mining", "Truesilver Ore", ["Truesilver Deposit", "Ooze Covered Truesilver Deposit"], None),
+    "darkiron": ("mining", "Dark Iron Ore", ["Dark Iron Deposit"], None),
+    "thorium": ("mining", "Thorium Ore",
                 ["Small Thorium Vein", "Ooze Covered Thorium Vein", "Hakkari Thorium Vein",
-                 "Rich Thorium Vein", "Ooze Covered Rich Thorium Vein"]),
+                 "Rich Thorium Vein", "Ooze Covered Rich Thorium Vein"], None),
     # Herbalism
-    "peacebloom": ("herbalism", 2447, "Peacebloom", ["Peacebloom"]),
-    "silverleaf": ("herbalism", 765, "Silverleaf", ["Silverleaf"]),
-    "earthroot": ("herbalism", 2449, "Earthroot", ["Earthroot"]),
-    "mageroyal": ("herbalism", 785, "Mageroyal", ["Mageroyal"]),
-    "briarthorn": ("herbalism", 2450, "Briarthorn", ["Briarthorn"]),
-    "stranglekelp": ("herbalism", 3820, "Stranglekelp", ["Stranglekelp"]),
-    "bruiseweed": ("herbalism", 2453, "Bruiseweed", ["Bruiseweed"]),
-    "steelbloom": ("herbalism", 3355, "Wild Steelbloom", ["Wild Steelbloom"]),
-    "gravemoss": ("herbalism", 3369, "Grave Moss", ["Grave Moss"]),
-    "kingsblood": ("herbalism", 3356, "Kingsblood", ["Kingsblood"]),
-    "liferoot": ("herbalism", 3357, "Liferoot", ["Liferoot"]),
-    "fadeleaf": ("herbalism", 3818, "Fadeleaf", ["Fadeleaf"]),
-    "goldthorn": ("herbalism", 3821, "Goldthorn", ["Goldthorn"]),
-    "khadgar": ("herbalism", 3358, "Khadgar's Whisker", ["Khadgar's Whisker"]),
-    "wintersbite": ("herbalism", 3819, "Wintersbite", ["Wintersbite"]),
-    "firebloom": ("herbalism", 4625, "Firebloom", ["Firebloom"]),
-    "purplelotus": ("herbalism", 8831, "Purple Lotus", ["Purple Lotus"]),
-    "arthas": ("herbalism", 8836, "Arthas' Tears", ["Arthas' Tears"]),
-    "sungrass": ("herbalism", 8838, "Sungrass", ["Sungrass"]),
-    "blindweed": ("herbalism", 8839, "Blindweed", ["Blindweed"]),
-    "ghostmushroom": ("herbalism", 8845, "Ghost Mushroom", ["Ghost Mushroom"]),
-    "gromsblood": ("herbalism", 8846, "Gromsblood", ["Gromsblood"]),
-    "sansam": ("herbalism", 13464, "Golden Sansam", ["Golden Sansam"]),
-    "dreamfoil": ("herbalism", 13463, "Dreamfoil", ["Dreamfoil"]),
-    "silversage": ("herbalism", 13465, "Mountain Silversage", ["Mountain Silversage"]),
-    "plaguebloom": ("herbalism", 13466, "Plaguebloom", ["Plaguebloom"]),
-    "icecap": ("herbalism", 13467, "Icecap", ["Icecap"]),
-    "blacklotus": ("herbalism", 13468, "Black Lotus", ["Black Lotus"]),
+    "peacebloom": ("herbalism", "Peacebloom", ["Peacebloom"], None),
+    "silverleaf": ("herbalism", "Silverleaf", ["Silverleaf"], None),
+    "earthroot": ("herbalism", "Earthroot", ["Earthroot"], None),
+    "mageroyal": ("herbalism", "Mageroyal", ["Mageroyal"], None),
+    "briarthorn": ("herbalism", "Briarthorn", ["Briarthorn"], None),
+    "stranglekelp": ("herbalism", "Stranglekelp", ["Stranglekelp"], None),
+    "bruiseweed": ("herbalism", "Bruiseweed", ["Bruiseweed"], None),
+    "steelbloom": ("herbalism", "Wild Steelbloom", ["Wild Steelbloom"], None),
+    "gravemoss": ("herbalism", "Grave Moss", ["Grave Moss"], None),
+    "kingsblood": ("herbalism", "Kingsblood", ["Kingsblood"], None),
+    "liferoot": ("herbalism", "Liferoot", ["Liferoot"], None),
+    "fadeleaf": ("herbalism", "Fadeleaf", ["Fadeleaf"], None),
+    "goldthorn": ("herbalism", "Goldthorn", ["Goldthorn"], None),
+    "khadgar": ("herbalism", "Khadgar's Whisker", ["Khadgar's Whisker"], None),
+    "wintersbite": ("herbalism", "Wintersbite", ["Wintersbite"], None),
+    "firebloom": ("herbalism", "Firebloom", ["Firebloom"], None),
+    "purplelotus": ("herbalism", "Purple Lotus", ["Purple Lotus"], None),
+    "arthas": ("herbalism", "Arthas' Tears", ["Arthas' Tears"], None),
+    "sungrass": ("herbalism", "Sungrass", ["Sungrass"], None),
+    "blindweed": ("herbalism", "Blindweed", ["Blindweed"], None),
+    "ghostmushroom": ("herbalism", "Ghost Mushroom", ["Ghost Mushroom"], None),
+    "gromsblood": ("herbalism", "Gromsblood", ["Gromsblood"], None),
+    "sansam": ("herbalism", "Golden Sansam", ["Golden Sansam"], None),
+    "dreamfoil": ("herbalism", "Dreamfoil", ["Dreamfoil"], None),
+    "silversage": ("herbalism", "Mountain Silversage", ["Mountain Silversage"], None),
+    "plaguebloom": ("herbalism", "Plaguebloom", ["Plaguebloom"], None),
+    "icecap": ("herbalism", "Icecap", ["Icecap"], None),
+    "blacklotus": ("herbalism", "Black Lotus", ["Black Lotus"], None),
+    # Fishing pools (skill = suggested fishing skill for the waters they appear in)
+    "deviatefish": ("fishing", "Deviate Fish", ["School of Deviate Fish"], 25),
+    "sagefish": ("fishing", "Raw Sagefish", ["Sagefish School"], 50),
+    "blackmouth": ("fishing", "Oily Blackmouth", ["Oily Blackmouth School"], 100),
+    "firefin": ("fishing", "Firefin Snapper", ["Firefin Snapper School"], 100),
+    "wreckage": ("fishing", None, ["Floating Wreckage", "Floating Debris"], 100),
+    "greatersagefish": ("fishing", "Raw Greater Sagefish", ["Greater Sagefish School"], 175),
+    "stonescale": ("fishing", "Stonescale Eel", ["Stonescale Eel Swarm"], 250),
+    "elementalwater": ("fishing", "Elemental Water", ["Patch of Elemental Water"], 250),
 }
+
+# fishing pools are not in the world database's spawn pools; about a third of a
+# zone's pool spots hold a pool at any time
+DEFAULT_FISH_AVAILABILITY = 0.33
+DEFAULT_RESPAWN = 300
 
 # material key -> (itemID, english name, minimum drop chance in % for a mob to count)
 SKIN = {
@@ -142,6 +159,15 @@ SKIN = {
     "blackdragonscale": (15416, "Black Dragonscale", 3),
     "reddragonscale": (15414, "Red Dragonscale", 3),
 }
+
+# profession skill line IDs (for localized skill names)
+SKILLS = {
+    "mining": 186, "herbalism": 182, "skinning": 393, "fishing": 356, "alchemy": 171,
+    "blacksmithing": 164, "leatherworking": 165, "tailoring": 197, "engineering": 202,
+    "enchanting": 333, "firstaid": 129, "cooking": 185,
+}
+
+LOCALES = ["deDE", "esES"]
 
 
 def pack(x, y):
@@ -199,27 +225,96 @@ def gen_zones(pf):
     return sizes
 
 
+# ---------------------------------------------------------------- world database pools
+
+def node_availability(sql):
+    """{gameobject entry: average share of its spawn points holding a node}.
+
+    Gathering nodes are spawned through pools that keep only `max_limit` of their
+    members active, so most spawn points are empty at any moment.
+    """
+    spawns = {}
+    by_entry = defaultdict(list)
+    for r in sql_rows(sql, "gameobject"):
+        guid, entry = int(r[0]), int(r[1])
+        spawns[guid] = entry
+        by_entry[entry].append(guid)
+    limit = {int(r[0]): int(r[1]) for r in sql_rows(sql, "pool_template")}
+    chances = defaultdict(list)   # pool -> member chances
+    member = {}                    # guid -> (pool, chance)
+    for r in sql_rows(sql, "pool_gameobject"):
+        guid, pool, chance = int(r[0]), int(r[1]), float(r[2])
+        member[guid] = (pool, chance)
+        chances[pool].append(chance)
+    for r in sql_rows(sql, "pool_gameobject_template"):
+        entry, pool, chance = int(r[0]), int(r[1]), float(r[2])
+        for guid in by_entry[entry]:
+            if guid not in member:
+                member[guid] = (pool, chance)
+                chances[pool].append(chance)
+    mother = {}
+    for r in sql_rows(sql, "pool_pool"):
+        pool, mom, chance = int(r[0]), int(r[1]), float(r[2])
+        mother[pool] = (mom, chance)
+        chances[mom].append(chance)
+
+    def share(pool, chance):
+        lim = limit.get(pool, 1)
+        cs = chances[pool]
+        explicit = sum(c for c in cs if c > 0)
+        equal = sum(1 for c in cs if c == 0)
+        if chance > 0:
+            return min(1.0, lim * chance / 100)
+        if not equal:
+            return 0.0
+        rest = max(0.0, 100 - explicit) / 100 if explicit else 1.0
+        return min(1.0, lim * rest / equal)
+
+    def active(pool, depth=0):
+        if pool not in mother or depth > 5:
+            return 1.0
+        mom, chance = mother[pool]
+        return share(mom, chance) * active(mom, depth + 1)
+
+    out = {}
+    for entry, guids in by_entry.items():
+        vals = []
+        for g in guids:
+            if g in member:
+                pool, chance = member[g]
+                vals.append(share(pool, chance) * active(pool))
+            else:
+                vals.append(1.0)
+        out[entry] = sum(vals) / len(vals)
+    return out
+
+
 # ---------------------------------------------------------------- gathering nodes
 
-def gen_nodes(pf, sizes):
+def gen_nodes(pf, sql, sizes, items_en):
     objects = pfdb.load_spawns(os.path.join(pf, "objects.lua"))
     onames = pfdb.load_names(os.path.join(pf, "enUS", "objects.lua"))
     skill = {}
     for key in ("mines", "herbs"):
         for oid, req in pfdb.load_meta(os.path.join(pf, "meta.lua"), key).items():
             skill[-oid] = int(req)
+    fish = {-oid for oid in pfdb.load_meta(os.path.join(pf, "meta.lua"), "fish")}
+    avail = node_availability(sql)
 
     by_name = defaultdict(list)
-    for oid in skill:
+    for oid in set(skill) | fish:
         by_name[onames.get(oid)].append(oid)
 
     out = [
         "-- Generated by tools/gen_data.py - do not edit by hand.",
-        "-- Spawn points derived from pfQuest (MIT, https://github.com/shagu/pfQuest).",
+        "-- Spawn points derived from pfQuest (MIT, https://github.com/shagu/pfQuest);",
+        "-- node availability from the CMaNGOS classic world database spawn pools.",
         "-- Coordinates are packed as floor(x*10)*10000 + floor(y*10) in zone percent.",
+        "-- zones[area] = { a = share of spawn points holding a node, r = respawn seconds, points... }",
         "CraftingForever_GatherDB = {",
     ]
-    for key, (prof, item, iname, nodes) in GATHER.items():
+    used_objects = {}
+    for key, (prof, iname, nodes, fixed_skill) in GATHER.items():
         req = None
         points = defaultdict(list)
         for nname in nodes:
@@ -228,28 +323,41 @@ def gen_nodes(pf, sizes):
                 # still listed under `nodes` so in-game gathering recognises it
                 print("  note: no spawn data for %r" % nname)
                 continue
+            used_objects[nname] = oids
             for oid in oids:
-                req = skill[oid] if req is None else min(req, skill[oid])
-                for x, y, zone, _ in objects.get(oid, {"coords": []})["coords"]:
+                if oid in skill:
+                    req = skill[oid] if req is None else min(req, skill[oid])
+                for x, y, zone, respawn in objects.get(oid, {"coords": []})["coords"]:
                     if zone in ZONES:
-                        points[zone].append((x, y))
+                        points[zone].append((x, y, oid, respawn))
+        if fixed_skill is not None:
+            req = fixed_skill
+        item = items_en[iname] if iname else 0
         out.append("  [%s] = {" % lua_str(key))
         out.append("    prof = %s, item = %d, name = %s, skill = %d," % (
-            lua_str(prof), item, lua_str(iname), max(req, 1)))
+            lua_str(prof), item, lua_str(iname or nodes[0]), max(req, 1)))
         out.append("    nodes = { %s }," % ", ".join(lua_str(n) for n in nodes))
         out.append("    zones = {")
         total = 0
         for zone in sorted(points):
-            pts = dedupe(points[zone], sizes[zone])
+            raw = points[zone]
+            pts = dedupe([(x, y) for x, y, _, _ in raw], sizes[zone])
             total += len(pts)
-            out.append("      [%d] = {" % zone)
+            if prof == "fishing":
+                a = DEFAULT_FISH_AVAILABILITY
+            else:
+                a = sum(avail.get(oid, 1.0) for _, _, oid, _ in raw) / len(raw)
+            resp = sorted(r for _, _, _, r in raw if r > 0)
+            r = resp[len(resp) // 2] if resp else DEFAULT_RESPAWN
+            out.append("      [%d] = { a = %.3f, r = %d," % (zone, a, r))
             out.extend("        %s," % row for row in packed_list(pts))
             out.append("      },")
         out.append("    },")
         out.append("  },")
-        print("  %-14s skill %3d  %5d points in %d zones" % (key, max(req, 1), total, len(points)))
+        print("  %-15s skill %3d  %5d points in %d zones" % (key, max(req, 1), total, len(points)))
     out.append("}")
     write("Data/Nodes.lua", out)
+    return used_objects
 
 
 # ---------------------------------------------------------------- skinning
@@ -353,6 +461,8 @@ def gen_skinning(pf, sql, sizes):
                 per_zone[zone].append((x, y))
         if not per_zone:
             continue
+        resp = sorted(r for _, _, _, r in u["coords"] if r > 0)
+        c["respawn"] = resp[len(resp) // 2] if resp else DEFAULT_RESPAWN
         mobs[cid] = (c, drops)
         for zone, pts in per_zone.items():
             spawns[zone][cid] = dedupe(pts, sizes[zone], 4.0)
@@ -367,13 +477,14 @@ def gen_skinning(pf, sql, sizes):
     for key, (item, name, _) in SKIN.items():
         out.append("    [%s] = { item = %d, name = %s }," % (lua_str(key), item, lua_str(name)))
     out.append("  },")
-    out.append("  -- [creatureID] = { name, minLevel, maxLevel, elite, { [material] = drop% } }")
+    out.append("  -- [creatureID] = { name, minLevel, maxLevel, elite, { [material] = drop% }, respawnSeconds }")
     out.append("  mobs = {")
     for cid in sorted(mobs):
         c, drops = mobs[cid]
         d = ", ".join("%s = %.1f" % (k, v) for k, v in sorted(drops.items()))
-        out.append("    [%d] = { %s, %d, %d, %s, { %s } }," % (
-            cid, lua_str(c["name"]), c["lmin"], c["lmax"], "true" if c["elite"] else "false", d))
+        out.append("    [%d] = { %s, %d, %d, %s, { %s }, %d }," % (
+            cid, lua_str(c["name"]), c["lmin"], c["lmax"], "true" if c["elite"] else "false", d,
+            c["respawn"]))
     out.append("  },")
     out.append("  -- [areaID] = { [creatureID] = { packed spawn points } }")
     out.append("  spawns = {")
@@ -389,6 +500,112 @@ def gen_skinning(pf, sql, sizes):
     out.append("}")
     write("Data/Skinning.lua", out)
     print("  %d skinnable mobs, %d spawn points" % (len(mobs), total))
+    return sorted(mobs)
+
+
+# ---------------------------------------------------------------- localization
+
+def guide_names():
+    """English item, NPC and place names referenced by Data/Guides.lua."""
+    with open(os.path.join(ROOT, "Data", "Guides.lua"), encoding="utf-8") as fh:
+        text = "\n".join(l for l in fh if not l.lstrip().startswith("--"))
+    items = set(re.findall(r'craft = "([^"]+)"', text))
+    items |= set(re.findall(r'\{ "([^"]+)", \d+ \}', text))
+    items |= set(re.findall(r"\{item:([^}]+)\}", text))
+    npcs = set(re.findall(r"\{npc:([^}]+)\}", text))
+    places = set(re.findall(r"\{place:([^}]+)\}", text))
+    return items, npcs, places
+
+
+def first_ids(names_by_id):
+    out = {}
+    for i in sorted(names_by_id):
+        out.setdefault(names_by_id[i], i)
+    return out
+
+
+def gen_locale(pf, items_en, used_objects, mob_ids):
+    zones_en = pfdb.load_names(os.path.join(pf, "enUS", "zones.lua"))
+    units_en = pfdb.load_names(os.path.join(pf, "enUS", "units.lua"))
+    item_names, npc_names, place_names = guide_names()
+
+    guide_items = {}
+    for name in sorted(item_names):
+        if name in items_en:
+            guide_items[name] = items_en[name]
+        else:
+            print("  note: %r is not an item (kept in english)" % name)
+    unit_ids, zone_ids = first_ids(units_en), first_ids(zones_en)
+    npcs = {n: unit_ids[n] for n in npc_names if n in unit_ids}
+    places = {n: zone_ids[n] for n in place_names if n in zone_ids}
+    for n in sorted((npc_names - set(npcs)) | (place_names - set(places))):
+        print("  WARNING: unresolved guide name %r" % n)
+
+    item_ids = set(guide_items.values())
+    for _, iname, _, _ in GATHER.values():
+        if iname:
+            item_ids.add(items_en[iname])
+    for item, _, _ in SKIN.values():
+        item_ids.add(item)
+
+    out = [
+        "-- Generated by tools/gen_data.py - do not edit by hand.",
+        "-- Localized names from pfQuest (MIT, https://github.com/shagu/pfQuest).",
+        "",
+        "-- english item names used by Data/Guides.lua -> itemID",
+        "CraftingForever_ItemIDs = {",
+    ]
+    for name in sorted(guide_items):
+        out.append("  [%s] = %d," % (lua_str(name), guide_items[name]))
+    out.append("}")
+    out.append("")
+    out.append("CraftingForever_LocaleDB = {")
+    for loc in LOCALES:
+        def load(kind):
+            return pfdb.load_names(os.path.join(pf, loc, kind + ".lua"))
+        items, objects, zones = load("items"), load("objects"), load("zones")
+        units, skills = load("units"), load("professions")
+        out.append("  %s = {" % loc)
+        out.append("    items = {")
+        for i in sorted(item_ids):
+            if i in items:
+                out.append("      [%d] = %s," % (i, lua_str(items[i])))
+        out.append("    },")
+        out.append("    objects = {")
+        for en in sorted(used_objects):
+            for oid in used_objects[en]:
+                if oid in objects and objects[oid] != en:
+                    out.append("      [%s] = %s," % (lua_str(en), lua_str(objects[oid])))
+                    break
+        out.append("    },")
+        out.append("    zones = {")
+        for area in sorted(ZONES):
+            if area in zones:
+                out.append("      [%d] = %s," % (area, lua_str(zones[area])))
+        out.append("    },")
+        out.append("    places = {")
+        for en in sorted(places):
+            if places[en] in zones:
+                out.append("      [%s] = %s," % (lua_str(en), lua_str(zones[places[en]])))
+        out.append("    },")
+        out.append("    npcs = {")
+        for en in sorted(npcs):
+            if npcs[en] in units:
+                out.append("      [%s] = %s," % (lua_str(en), lua_str(units[npcs[en]])))
+        out.append("    },")
+        out.append("    skills = {")
+        for key in sorted(SKILLS):
+            if SKILLS[key] in skills:
+                out.append("      %s = %s," % (key, lua_str(skills[SKILLS[key]])))
+        out.append("    },")
+        out.append("    mobs = {")
+        for cid in mob_ids:
+            if cid in units:
+                out.append("      [%d] = %s," % (cid, lua_str(units[cid])))
+        out.append("    },")
+        out.append("  },")
+    out.append("}")
+    write("Data/Locale.lua", out)
 
 
 def main():
@@ -396,9 +613,11 @@ def main():
         raise SystemExit(__doc__)
     pf, sql = sys.argv[1], sys.argv[2]
     os.makedirs(os.path.join(ROOT, "Data"), exist_ok=True)
+    items_en = first_ids(pfdb.load_names(os.path.join(pf, "enUS", "items.lua")))
     sizes = gen_zones(pf)
-    gen_nodes(pf, sizes)
-    gen_skinning(pf, sql, sizes)
+    used_objects = gen_nodes(pf, sql, sizes, items_en)
+    mob_ids = gen_skinning(pf, sql, sizes)
+    gen_locale(pf, items_en, used_objects, mob_ids)
 
 
 if __name__ == "__main__":

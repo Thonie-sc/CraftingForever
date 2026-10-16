@@ -1,12 +1,13 @@
 # CraftingForever
 
-A World of Warcraft **1.12** (vanilla, Interface 11200) addon for WoW: Forever that covers gathering routes, gathered-node tracking and profession leveling guides.
+A World of Warcraft **1.12** (vanilla, Interface 11200) addon for WoW: Forever that covers gathering routes, gathered-node tracking and profession leveling guides, in English, German and Spanish.
 
 ## Features
 
-**Gathering routes (Mining, Herbalism, Skinning)**
-- Pick any combination of ores, herbs and leathers from the material list.
-- *Find best routes* ranks zones by nodes per 1000 yards of loop. It merges the spawn points of every selected material, so picking Copper and Tin finds the zones where both spawn together. Each result shows stop count, loop length, lap time on foot and mounted, and how many stops each selected material has.
+**Gathering routes (Mining, Herbalism, Skinning, Fishing pools)**
+- Pick any combination of ores, herbs, leathers and fishing pools from the material list.
+- *Find best routes* finds the loop with the highest expected yield per hour that never stands still waiting for respawns (see [How routes are ranked](#how-routes-are-ranked)). Spawn points of every selected material are merged, so picking Copper and Tin finds loops that gather both, and routes that offer all selected materials are preferred.
+- Each result shows the zone, the area covered (whole zone or a circle around its densest spot), expected gathers per hour per material, lap time and stop count. Tick *Mounted* to plan at mount speed (on by default from level 40).
 - Click a result to activate it. The loop is optimised (nearest neighbour plus 2-opt) and drawn on the world map as a dotted path with material icons at each stop. The stops also appear on the minimap. Double-click a result to open the world map on that zone.
 - Filters: hide zones well above your level, and hide the enemy faction's territory.
 - Skinning routes use real creature spawns and skinning loot tables. Mobs your Skinning skill can't skin are skipped.
@@ -18,12 +19,26 @@ A World of Warcraft **1.12** (vanilla, Interface 11200) addon for WoW: Forever t
 
 **Leveling guides (automatic)**
 - Your professions and skill levels are read automatically. The guide tab shows the guides for your professions, and the current step is highlighted.
-- Guides: Mining, Herbalism, Skinning, Alchemy, Blacksmithing, Leatherworking, Tailoring, Engineering, Enchanting, First Aid.
+- Guides: Mining, Herbalism, Skinning, Fishing, Alchemy, Blacksmithing, Leatherworking, Tailoring, Engineering, Enchanting, First Aid, Cooking.
 - Gathering steps list materials and faction-specific zones. *Find route* builds a route for that step straight away.
 - Crafting steps show the recipe in its current difficulty colour, the estimated crafts left, and reagents as `in bags / needed`.
 - Opening a profession window once caches the real recipe reagents. These replace the guide's built-in ones, so the guide matches the server.
-- When your skill hits its cap, the guide and tracker tell you to visit the trainer.
+- When your skill hits its cap, the guide and tracker tell you what to do next: visit the trainer, or the book or quest for Fishing, Cooking and First Aid.
 - A small movable tracker shows the current step of each profession and updates as you skill up.
+
+**Languages**
+- English, German (deDE) and Spanish (esES/esMX) clients. The interface and guide notes are translated, and item, herb, ore, zone, NPC and creature names come from the client's language data.
+- Gathering is recognised in every language: Mining, Skinning and Fishing by the localized profession name, and herbs by the herb under the mouse.
+
+## How routes are ranked
+
+Only a share of a zone's spawn points hold a node at any time, for example about 18% for Copper Veins. This share comes from the world database's spawn pools. A gathered node respawns about 5 minutes later at a random point of its pool.
+
+If a loop takes `T` seconds and covers a share `f` of the zone's spawn points, a respawn lands on the loop with probability `f`. The planner then reaches it after `T/2` on average. Otherwise the node waits off-route until another player takes it, assumed to be about 20 minutes. Each spawn point on the loop then yields `a / (respawn + f*T/2 + (1-f)*20min)` nodes per second.
+
+Creatures respawn where they died, so a mob yields `1 / max(T, respawn)` kills per second. `T` includes travel time and time spent gathering (mining, picking, killing and skinning, fishing a pool, and remounting).
+
+For each zone, the planner tries the whole zone and circles of 600, 1000 and 1600 yards around its densest spots, keeps the best one, and builds real loops for the most promising zones. Treat the yields as estimates for comparing routes, not exact promises.
 
 ## Installation
 
@@ -43,16 +58,18 @@ Minimap button: left-click opens the window, right-click toggles the tracker, dr
 
 ## Known limitations
 
-- Gather detection and profession detection use the English spell and skill names (enUS/enGB client).
+- Enchanting recipe names are spells, not items, so they stay in English in German and Spanish clients. Their recipe colour and real reagents are only picked up on English clients.
 - Built-in node, zone and mob data is standard 1.12 data. If WoW: Forever adds custom zones or spawns, those only appear through the nodes you gather yourself.
 - Crafting guide reagents marked `*` are approximate until you open the profession window once.
 
 ## Data and regeneration
 
-`Data/Zones.lua`, `Data/Nodes.lua` and `Data/Skinning.lua` are generated by `tools/gen_data.py` from:
+`Data/Zones.lua`, `Data/Nodes.lua`, `Data/Skinning.lua` and `Data/Locale.lua` are generated by `tools/gen_data.py` from:
 
-- [pfQuest](https://github.com/shagu/pfQuest) (MIT, see `NOTICE`): gathering object and creature spawn coordinates, and zone sizes.
-- [CMaNGOS classic-db](https://github.com/cmangos/classic-db): creature levels/ranks and skinning loot tables.
+- [pfQuest](https://github.com/shagu/pfQuest) (MIT, see `NOTICE`): gathering object, fishing pool and creature spawn coordinates, respawn times, zone sizes, and German/Spanish names.
+- [CMaNGOS classic-db](https://github.com/cmangos/classic-db): spawn pools (node availability), creature levels/ranks and skinning loot tables.
+
+`Data/Locale.lua` also resolves the item, NPC and place names used in `Data/Guides.lua`, so re-run the generator after editing a guide.
 
 ```
 python3 tools/gen_data.py <path/to/pfQuest/db> <path/to/ClassicDB_1_12_1_*.sql[.gz]>
@@ -63,7 +80,11 @@ python3 tools/gen_data.py <path/to/pfQuest/db> <path/to/ClassicDB_1_12_1_*.sql[.
 `tools/test/harness.lua` runs the addon under a stock Lua 5.0 interpreter against a small mock of the 1.12 API. It covers file loading, route finding, gather recording and UI construction:
 
 ```
-lua5.0 tools/test/harness.lua
+lua5.0 tools/test/harness.lua enUS
+lua5.0 tools/test/harness.lua deDE
+lua5.0 tools/test/harness.lua esES
 ```
+
+The German and Spanish runs also check that every UI string and guide note has a translation with matching `%` specifiers and `{item:...}` tokens.
 
 Code must stay Lua 5.0 compatible: no `#`, no `%` (use `math.mod`), no `string.match`/`gmatch`, and use `this`/`arg1` in scripts.
