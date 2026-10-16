@@ -1,11 +1,17 @@
 -- CraftingForever core: namespace, events, saved variables, helpers.
--- Written for the 1.12 client (Lua 5.0): no '#', no '%', use table.getn / math.mod.
+-- Written for the WoW: Forever client (modern 12.0-based engine, Lua 5.1,
+-- Classic Era content). Zones are identified by uiMapID everywhere.
 
 CraftingForever = CraftingForever or {}
 local CF = CraftingForever
 
-CF.version = "0.2.0"
-CF.name = "CraftingForever"
+CF.name = ...
+CF.version = "0.3.0"
+
+local HBD = LibStub("HereBeDragons-2.0")
+CF.HBD = HBD
+
+local DB_VERSION = 2  -- 1 = the 1.12 build that keyed nodes by areaID
 
 local DEFAULTS = {
   showLearned = true,     -- gathered nodes on the world map
@@ -32,19 +38,39 @@ function CF.Unpack(p)
   return x / 10, (p - x * 10000) / 10
 end
 
--- Distance in yards between two points (zone percent) of the given area.
-function CF.Distance(area, x1, y1, x2, y2)
-  local z = CraftingForever_Zones[area]
-  local dx = (x1 - x2) * z[7] / 100
-  local dy = (y1 - y2) * z[8] / 100
+-- Zone width and height in yards. Zones without bundled data (e.g. new Forever
+-- zones that only have nodes you gathered yourself) are measured by HereBeDragons.
+function CF.ZoneSize(map)
+  local z = CraftingForever_Zones[map]
+  if z then return z[7], z[8] end
+  local w, h = HBD:GetZoneSize(map)
+  if w and w > 0 then return w, h end
+  return 1000, 1000
+end
+
+-- Zone info: { name, areaID, continent, minLevel, maxLevel, faction, width, height }
+function CF.ZoneInfo(map)
+  local z = CraftingForever_Zones[map]
+  if z then return z end
+  local w, h = CF.ZoneSize(map)
+  return { CF.ZoneName(map), 0, 0, 1, 60, "C", w, h }
+end
+
+-- Distance in yards between two points (zone percent) of the given map.
+function CF.Distance(map, x1, y1, x2, y2)
+  local w, h = CF.ZoneSize(map)
+  local dx = (x1 - x2) * w / 100
+  local dy = (y1 - y2) * h / 100
   return math.sqrt(dx * dx + dy * dy)
 end
 
-function CF.ZoneName(area)
-  local loc = CF.LDB and CF.LDB.zones and CF.LDB.zones[area]
+function CF.ZoneName(map)
+  local info = C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(map)
+  if info and info.name then return info.name end
+  local loc = CF.LDB and CF.LDB.zones and CF.LDB.zones[map]
   if loc then return loc end
-  local z = CraftingForever_Zones[area]
-  return z and z[1] or ("Zone " .. tostring(area))
+  local z = CraftingForever_Zones[map]
+  return z and z[1] or ("Zone " .. tostring(map))
 end
 
 function CF.Count(t)
@@ -63,7 +89,7 @@ end
 -- events: game events and internal messages
 -------------------------------------------------------------------------------
 
-local eventFrame = CreateFrame("Frame", "CraftingForeverEventFrame")
+local eventFrame = CreateFrame("Frame")
 local gameHandlers = {}
 local messageHandlers = {}
 
@@ -75,11 +101,11 @@ function CF.RegisterEvent(ev, fn)
   table.insert(gameHandlers[ev], fn)
 end
 
-eventFrame:SetScript("OnEvent", function()
+eventFrame:SetScript("OnEvent", function(_, event, ...)
   local list = gameHandlers[event]
   if not list then return end
-  for i = 1, table.getn(list) do
-    list[i](arg1, arg2, arg3, arg4, arg5)
+  for i = 1, #list do
+    list[i](...)
   end
 end)
 
@@ -89,11 +115,11 @@ function CF.On(msg, fn)
   table.insert(messageHandlers[msg], fn)
 end
 
-function CF.Fire(msg, a1, a2, a3)
+function CF.Fire(msg, ...)
   local list = messageHandlers[msg]
   if not list then return end
-  for i = 1, table.getn(list) do
-    list[i](a1, a2, a3)
+  for i = 1, #list do
+    list[i](...)
   end
 end
 
@@ -106,9 +132,13 @@ CF.RegisterEvent("ADDON_LOADED", function(name)
 
   CraftingForeverDB = CraftingForeverDB or {}
   local db = CraftingForeverDB
-  db.nodes = db.nodes or {}       -- [area][material] = { {x, y, count, time}, ... }
-  db.recipes = db.recipes or {}   -- [recipe name] = { {reagent, count}, ... } from trade skill windows
-  db.icons = db.icons or {}       -- [itemID] = texture path, learned from loot and bags
+  if db.version ~= DB_VERSION then
+    db.nodes = {}  -- older data used other zone keys
+    db.recipes = {}
+    db.version = DB_VERSION
+  end
+  db.nodes = db.nodes or {}       -- [uiMapID][material] = { {x, y, count, time}, ... }
+  db.recipes = db.recipes or {}   -- [recipe name] = { {reagent, count, itemID}, ... } from trade skill windows
   db.settings = db.settings or {}
   for k, v in pairs(DEFAULTS) do
     if db.settings[k] == nil then db.settings[k] = v end

@@ -1,7 +1,7 @@
 -- Leveling guides for the 1.12 professions.
 --
 -- Gathering steps list the materials to farm and recommended zones per faction
--- (area IDs, see Data/Zones.lua); the route planner turns them into loops.
+-- (uiMapIDs, see Data/Zones.lua); the route planner turns them into loops.
 -- Crafting steps list the recipe, roughly how many crafts it takes and the
 -- reagents per craft. Reagents left out (mats = nil) are filled in from the real
 -- recipe data the first time you open that profession window in game, which
@@ -31,19 +31,19 @@ CF.Guides = {
     title = "Mining", kind = "gather",
     steps = {
       { from = 1, to = 65, mats = { "copper" },
-        zones = { A = { 12, 1, 141, 148, 40 }, H = { 14, 215, 85, 17, 130 } },
+        zones = { A = { 1429, 1426, 1438, 1439, 1436 }, H = { 1411, 1412, 1420, 1413, 1421 } },
         text = "Smelt the ore into bars if you also craft." },
       { from = 65, to = 125, mats = { "tin", "silver", "copper" },
-        zones = { A = { 44, 11, 148, 331 }, H = { 17, 267, 406, 331 } },
+        zones = { A = { 1433, 1437, 1439, 1440 }, H = { 1413, 1424, 1442, 1440 } },
         text = "{item:Silver Ore} shares spawn points with {item:Tin Ore}." },
       { from = 125, to = 175, mats = { "iron", "gold", "tin" },
-        zones = { A = { 45, 36, 33, 400, 405 }, H = { 45, 36, 33, 400, 405 } },
+        zones = { A = { 1417, 1416, 1434, 1441, 1443 }, H = { 1417, 1416, 1434, 1441, 1443 } },
         text = "{item:Gold Ore} shares spawn points with {item:Iron Ore}." },
       { from = 175, to = 245, mats = { "mithril", "truesilver", "iron" },
-        zones = { A = { 47, 3, 440, 51, 357 }, H = { 47, 3, 440, 51, 405 } },
+        zones = { A = { 1425, 1418, 1446, 1427, 1444 }, H = { 1425, 1418, 1446, 1427, 1443 } },
         text = "{item:Truesilver Ore} shares spawn points with {item:Mithril Ore}." },
       { from = 245, to = 300, mats = { "thorium", "truesilver", "mithril" },
-        zones = { A = { 490, 618, 46, 1377, 139, 16 }, H = { 490, 618, 46, 1377, 139, 16 } },
+        zones = { A = { 1449, 1452, 1428, 1451, 1423, 1447 }, H = { 1449, 1452, 1428, 1451, 1423, 1447 } },
 },
     },
   },
@@ -52,25 +52,25 @@ CF.Guides = {
     title = "Herbalism", kind = "gather",
     steps = {
       { from = 1, to = 50, mats = { "peacebloom", "silverleaf", "earthroot" },
-        zones = { A = { 12, 1, 141 }, H = { 14, 215, 85 } },
+        zones = { A = { 1429, 1426, 1438 }, H = { 1411, 1412, 1420 } },
 },
       { from = 50, to = 100, mats = { "mageroyal", "briarthorn", "earthroot" },
-        zones = { A = { 40, 148, 38 }, H = { 17, 130 } },
+        zones = { A = { 1436, 1439, 1432 }, H = { 1413, 1421 } },
 },
       { from = 100, to = 150, mats = { "bruiseweed", "kingsblood", "steelbloom", "stranglekelp" },
-        zones = { A = { 11, 267, 331, 10 }, H = { 406, 331, 267, 17 } },
+        zones = { A = { 1437, 1424, 1440, 1431 }, H = { 1442, 1440, 1424, 1413 } },
 },
       { from = 150, to = 205, mats = { "liferoot", "fadeleaf", "goldthorn", "khadgar" },
-        zones = { A = { 33, 45, 15 }, H = { 33, 45, 15 } },
+        zones = { A = { 1434, 1417, 1445 }, H = { 1434, 1417, 1445 } },
 },
       { from = 205, to = 235, mats = { "firebloom", "purplelotus", "sungrass", "khadgar" },
-        zones = { A = { 440, 51, 357, 47 }, H = { 440, 51, 357, 47 } },
+        zones = { A = { 1446, 1427, 1444, 1425 }, H = { 1446, 1427, 1444, 1425 } },
 },
       { from = 235, to = 270, mats = { "sungrass", "gromsblood", "sansam", "blindweed" },
-        zones = { A = { 357, 47, 16, 8 }, H = { 357, 47, 16, 8 } },
+        zones = { A = { 1444, 1425, 1447, 1435 }, H = { 1444, 1425, 1447, 1435 } },
 },
       { from = 270, to = 300, mats = { "dreamfoil", "silversage", "plaguebloom", "icecap" },
-        zones = { A = { 490, 16, 139, 28, 618 }, H = { 490, 16, 139, 28, 618 } },
+        zones = { A = { 1449, 1447, 1423, 1422, 1452 }, H = { 1449, 1447, 1423, 1422, 1452 } },
 },
     },
   },
@@ -79,19 +79,19 @@ CF.Guides = {
     title = "Skinning", kind = "gather",
     steps = {
       { from = 1, to = 75, mats = { "lightleather", "ruinedscraps" },
-        zones = { A = { 12, 1, 141, 40, 148, 38 }, H = { 14, 215, 85, 17, 130 } },
+        zones = { A = { 1429, 1426, 1438, 1436, 1439, 1432 }, H = { 1411, 1412, 1420, 1413, 1421 } },
         text = "Skin every beast you kill." },
       { from = 75, to = 150, mats = { "lightleather", "mediumleather" },
-        zones = { A = { 44, 11, 10, 148, 331 }, H = { 17, 406, 267, 331 } },
+        zones = { A = { 1433, 1437, 1431, 1439, 1440 }, H = { 1413, 1442, 1424, 1440 } },
 },
       { from = 150, to = 200, mats = { "mediumleather", "heavyleather" },
-        zones = { A = { 33, 45, 405, 15, 400 }, H = { 33, 45, 405, 15, 400 } },
+        zones = { A = { 1434, 1417, 1443, 1445, 1441 }, H = { 1434, 1417, 1443, 1445, 1441 } },
 },
       { from = 200, to = 250, mats = { "heavyleather", "thickleather" },
-        zones = { A = { 357, 440, 47, 33 }, H = { 357, 440, 47, 33 } },
+        zones = { A = { 1444, 1446, 1425, 1434 }, H = { 1444, 1446, 1425, 1434 } },
 },
       { from = 250, to = 300, mats = { "thickleather", "ruggedleather" },
-        zones = { A = { 490, 618, 46, 361, 1377 }, H = { 490, 618, 46, 361, 1377 } },
+        zones = { A = { 1449, 1452, 1428, 1448, 1451 }, H = { 1449, 1452, 1428, 1448, 1451 } },
 },
     },
   },
@@ -308,15 +308,15 @@ CF.Guides = {
     },
     steps = {
       { from = 1, to = 75, mats = { "sagefish" },
-        zones = { A = { 12, 1, 141, 148 }, H = { 14, 215, 85, 17 } },
+        zones = { A = { 1429, 1426, 1438, 1439 }, H = { 1411, 1412, 1420, 1413 } },
         text = "Fish in any water; pools are a bonus." },
       { from = 75, to = 150, mats = { "deviatefish", "sagefish", "blackmouth" },
-        zones = { A = { 40, 148, 11, 38 }, H = { 17, 130, 406 } },
+        zones = { A = { 1436, 1439, 1437, 1432 }, H = { 1413, 1421, 1442 } },
         text = "Fish in any water; pools are a bonus." },
       { from = 150, to = 225, mats = { "blackmouth", "firefin", "wreckage", "greatersagefish" },
-        zones = { A = { 33, 15, 405, 45 }, H = { 33, 15, 405, 45 } } },
+        zones = { A = { 1434, 1445, 1443, 1417 }, H = { 1434, 1445, 1443, 1417 } } },
       { from = 225, to = 300, mats = { "firefin", "blackmouth", "stonescale", "wreckage" },
-        zones = { A = { 440, 357, 16, 47 }, H = { 440, 357, 16, 47 } } },
+        zones = { A = { 1446, 1444, 1447, 1425 }, H = { 1446, 1444, 1447, 1425 } } },
     },
   },
 }
@@ -332,14 +332,14 @@ function CF.GuideStep(key, rank)
   local g = CF.Guides[key]
   if not g then return nil end
   local steps = g.steps
-  for i = 1, table.getn(steps) do
+  for i = 1, #steps do
     if rank < steps[i].to then return steps[i], i end
   end
-  return steps[table.getn(steps)], table.getn(steps)
+  return steps[#steps], #steps
 end
 
--- Reagents for a crafting step: real recipe data when known (localized names),
--- else the guide's (english names, localized here).
+-- Reagents for a crafting step as { {name, countPerCraft, itemID}, ... }: real
+-- recipe data when known (localized names), else the guide's (localized here).
 function CF.StepReagents(step)
   local recipe = step.craft and CF.ItemName(step.craft)
   if recipe and CF.db and CF.db.recipes[recipe] then
@@ -347,8 +347,9 @@ function CF.StepReagents(step)
   end
   if not step.mats then return nil, false end
   local mats = {}
-  for i = 1, table.getn(step.mats) do
-    mats[i] = { CF.ItemName(step.mats[i][1]), step.mats[i][2] }
+  for i = 1, #step.mats do
+    local en = step.mats[i][1]
+    mats[i] = { CF.ItemName(en), step.mats[i][2], CraftingForever_ItemIDs[en] }
   end
   return mats, false
 end
@@ -363,7 +364,7 @@ function CF.TrainerHint(key)
     if type(note) == "table" then note = note[CF.PlayerFaction()] end
     return string.format(CF.L["Skill capped at %d:"], p.max) .. " " .. CF.T(note)
   end
-  for i = 1, table.getn(CF.TRAINER_RANKS) do
+  for i = 1, #CF.TRAINER_RANKS do
     local t = CF.TRAINER_RANKS[i]
     if p.max < t.cap then
       return string.format(CF.L["Skill capped at %d: train %s (requires level %d)."], p.max, CF.L[t.rank], t.level)

@@ -35,7 +35,7 @@ local MOUNT_OVERHEAD = 3    -- seconds to dismount/remount per gather
 local GATHER_TIME = { mining = 5, herbalism = 4, skinning = 25, fishing = 40 }
 
 local function zoneAllowed(area, opts)
-  local z = CraftingForever_Zones[area]
+  local z = CF.ZoneInfo(area)
   if not z then return false end
   if opts.hideEnemy and z[6] ~= "C" and z[6] ~= opts.faction then return false end
   if opts.hideHigh and z[4] > opts.level + 5 then return false end
@@ -61,7 +61,7 @@ local function getPoint(col, area, x, y, isMob)
     zone = { cells = {}, points = {} }
     col.zones[area] = zone
   end
-  local z = CraftingForever_Zones[area]
+  local z = CF.ZoneInfo(area)
   local size = isMob and MOB_MERGE_YARDS or MERGE_YARDS
   local cx = math.floor(x * z[7] / 100 / size)
   local cy = math.floor(y * z[8] / 100 / size)
@@ -92,7 +92,7 @@ local function collectGather(col, key, opts)
     if zoneAllowed(area, opts) then
       local a, r = list.a or 0.2, list.r or 300
       local cap = m.prof == "fishing" and a or nil
-      for i = 1, table.getn(list) do
+      for i = 1, #list do
         local x, y = CF.Unpack(list[i])
         addNode(col, area, x, y, key, a, r, g, cap)
       end
@@ -108,7 +108,7 @@ local function collectLearned(col, key, opts)
     if list and zoneAllowed(area, opts) then
       local zd = m.zones and m.zones[area]
       local a, r = zd and zd.a or 0.2, zd and zd.r or 300
-      for i = 1, table.getn(list) do
+      for i = 1, #list do
         addNode(col, area, list[i][1], list[i][2], key, a, r, g)
       end
     end
@@ -127,7 +127,7 @@ local function collectSkinning(col, keys, opts)
         if opts.hideHigh and mob[2] > opts.level + 3 then ok = false end
         local drops, any = {}, false
         if ok then
-          for i = 1, table.getn(keys) do
+          for i = 1, #keys do
             local chance = mob[5][keys[i]]
             if chance then
               drops[keys[i]] = chance / 100
@@ -136,7 +136,7 @@ local function collectSkinning(col, keys, opts)
           end
         end
         if any then
-          for i = 1, table.getn(pts) do
+          for i = 1, #pts do
             local x, y = CF.Unpack(pts[i])
             local p = getPoint(col, area, x, y, true)
             p.mobs = p.mobs + 1
@@ -169,9 +169,9 @@ end
 
 -- drops points without any neighbour within ISOLATED_YARDS (bucketed lookup)
 local function pruneIsolated(area, points)
-  local n = table.getn(points)
+  local n = #points
   if n <= 5 then return points end
-  local z = CraftingForever_Zones[area]
+  local z = CF.ZoneInfo(area)
   local buckets = {}
   local function cell(p)
     return math.floor(p.x * z[7] / 100 / ISOLATED_YARDS), math.floor(p.y * z[8] / 100 / ISOLATED_YARDS)
@@ -191,7 +191,7 @@ local function pruneIsolated(area, points)
       for dy = -1, 1 do
         local b = buckets[(cx + dx) * 1000 + cy + dy]
         if b then
-          for j = 1, table.getn(b) do
+          for j = 1, #b do
             local q = b[j]
             if q ~= p and CF.Distance(area, p.x, p.y, q.x, q.y) <= ISOLATED_YARDS then
               found = true
@@ -217,7 +217,7 @@ end
 function CF.EstimateYield(points, length, speed, f)
   f = f or 1
   local travel = length / speed
-  local n = table.getn(points)
+  local n = #points
   local T = travel
   local rate = 0
   for _ = 1, 8 do
@@ -252,7 +252,7 @@ end
 -- random uniform points: optimal tour ~ 0.7124 * sqrt(n * area), nearest
 -- neighbour tours run about 25% longer
 local function estimateLength(points)
-  local n = table.getn(points)
+  local n = #points
   local minX, maxX, minY, maxY = points[1].X, points[1].X, points[1].Y, points[1].Y
   for i = 2, n do
     local p = points[i]
@@ -269,12 +269,12 @@ end
 -- the route actually offers (asking for copper + tin prefers routes with both)
 local function score(perMat, keys)
   local total, present = 0, 0
-  for i = 1, table.getn(keys) do
+  for i = 1, #keys do
     local v = perMat[keys[i]] or 0
     total = total + v
     if v >= 0.5 then present = present + 1 end
   end
-  return total * present / table.getn(keys), total
+  return total * present / #keys, total
 end
 
 -------------------------------------------------------------------------------
@@ -283,8 +283,8 @@ end
 
 -- Returns an ordering (closed loop) of the points and its length in yards.
 function CF.SolveTour(area, points, improve)
-  local n = table.getn(points)
-  local z = CraftingForever_Zones[area]
+  local n = #points
+  local z = CF.ZoneInfo(area)
   local X, Y = {}, {}
   for i = 1, n do
     X[i] = points[i].x * z[7] / 100
@@ -355,13 +355,13 @@ end
 local function densestSeeds(points, sep)
   local buckets = {}
   local size = 300
-  for i = 1, table.getn(points) do
+  for i = 1, #points do
     local p = points[i]
     local k = math.floor(p.X / size) * 1000 + math.floor(p.Y / size)
     buckets[k] = (buckets[k] or 0) + p.events
   end
   local scored = {}
-  for i = 1, table.getn(points) do
+  for i = 1, #points do
     local p = points[i]
     local bx, by = math.floor(p.X / size), math.floor(p.Y / size)
     local s = 0
@@ -372,16 +372,16 @@ local function densestSeeds(points, sep)
   end
   table.sort(scored, function(a, b) return a.s > b.s end)
   local seeds = {}
-  for i = 1, table.getn(scored) do
+  for i = 1, #scored do
     local p = scored[i].p
     local ok = true
-    for j = 1, table.getn(seeds) do
+    for j = 1, #seeds do
       local q = seeds[j]
       if (p.X - q.X) * (p.X - q.X) + (p.Y - q.Y) * (p.Y - q.Y) < sep * sep then ok = false break end
     end
     if ok then
       table.insert(seeds, p)
-      if table.getn(seeds) >= SEEDS then break end
+      if #seeds >= SEEDS then break end
     end
   end
   return seeds
@@ -389,12 +389,12 @@ end
 
 local function bestCandidate(area, points, opts, keys)
   local speed = opts.mounted and CF.MOUNT_SPEED or CF.RUN_SPEED
-  local total = table.getn(points)
+  local total = #points
   local best
 
   local function try(subset, scope)
-    if table.getn(subset) < 4 then return end
-    local f = table.getn(subset) / total
+    if #subset < 4 then return end
+    local f = #subset / total
     local _, _, perMat = CF.EstimateYield(subset, estimateLength(subset), speed, f)
     local sc = score(perMat, keys)
     if not best or sc > best.score then
@@ -404,18 +404,18 @@ local function bestCandidate(area, points, opts, keys)
 
   try(points, nil)
   local seeds = densestSeeds(points, RADII[1])
-  for s = 1, table.getn(seeds) do
+  for s = 1, #seeds do
     local c = seeds[s]
-    for ri = 1, table.getn(RADII) do
+    for ri = 1, #RADII do
       local rad = RADII[ri]
       local subset = {}
-      for i = 1, table.getn(points) do
+      for i = 1, #points do
         local p = points[i]
         if (p.X - c.X) * (p.X - c.X) + (p.Y - c.Y) * (p.Y - c.Y) <= rad * rad then
           table.insert(subset, p)
         end
       end
-      if table.getn(subset) < table.getn(points) then
+      if #subset < #points then
         try(subset, { x = c.x, y = c.y, radius = rad })
       end
     end
@@ -439,7 +439,7 @@ local function evaluate(r)
   r.lap, r.gathers, r.perMat = CF.EstimateYield(r.points, r.length, speed, r.f)
   r.score, r.perHour = score(r.perMat, r.keys)
   r.counts = {}
-  for i = 1, table.getn(r.points) do
+  for i = 1, #r.points do
     for mat in pairs(r.points[i].yield) do r.counts[mat] = (r.counts[mat] or 0) + 1 end
   end
 end
@@ -450,7 +450,7 @@ function CF.FindRoutes(keys, zones)
   local opts = CF.RouteOptions(zones)
   local col = { zones = {} }
   local skinKeys = {}
-  for i = 1, table.getn(keys) do
+  for i = 1, #keys do
     local m = CF.materials[keys[i]]
     if m then
       if m.prof == "skinning" then
@@ -461,18 +461,18 @@ function CF.FindRoutes(keys, zones)
       end
     end
   end
-  if table.getn(skinKeys) > 0 then collectSkinning(col, skinKeys, opts) end
+  if #skinKeys > 0 then collectSkinning(col, skinKeys, opts) end
 
   local candidates = {}
   for area, zone in pairs(col.zones) do
-    local z = CraftingForever_Zones[area]
+    local z = CF.ZoneInfo(area)
     local points = pruneIsolated(area, zone.points)
-    for i = 1, table.getn(points) do
+    for i = 1, #points do
       local p = points[i]
       finalizePoint(p)
       p.X, p.Y = p.x * z[7] / 100, p.y * z[8] / 100
     end
-    if table.getn(points) >= 4 then
+    if #points >= 4 then
       local c = bestCandidate(area, points, opts, keys)
       if c then
         c.area = area
@@ -483,7 +483,7 @@ function CF.FindRoutes(keys, zones)
   table.sort(candidates, function(a, b) return a.score > b.score end)
 
   local results = {}
-  for i = 1, math.min(CANDIDATES, table.getn(candidates)) do
+  for i = 1, math.min(CANDIDATES, #candidates) do
     local r = candidates[i]
     r.order, r.length = CF.SolveTour(r.area, r.points, false)
     r.keys = keys

@@ -28,9 +28,10 @@ function CF.ui.Check(parent, text, getter, setter)
   local c = CreateFrame("CheckButton", name, parent, "UICheckButtonTemplate")
   c:SetWidth(24)
   c:SetHeight(24)
-  getglobal(name .. "Text"):SetText(text)
-  c:SetScript("OnShow", function() this:SetChecked(getter()) end)
-  c:SetScript("OnClick", function() setter(this:GetChecked() and true or false) end)
+  local label = c.text or c.Text or _G[name .. "Text"]
+  if label then label:SetText(text) end
+  c:SetScript("OnShow", function(self, button) self:SetChecked(getter()) end)
+  c:SetScript("OnClick", function(self, button) setter(self:GetChecked() and true or false) end)
   return c
 end
 
@@ -49,7 +50,7 @@ end
 
 local function rowSelected(row)
   local t = row:CreateTexture(nil, "BACKGROUND")
-  t:SetTexture(1, 0.82, 0, 0.18)
+  t:SetColorTexture(1, 0.82, 0, 0.18)
   t:SetAllPoints(row)
   t:Hide()
   return t
@@ -58,7 +59,7 @@ CF.ui.RowHighlight, CF.ui.RowSelected = rowHighlight, rowSelected
 
 local function scrollFrame(name, parent, rows, rowH, update)
   local s = CreateFrame("ScrollFrame", name, parent, "FauxScrollFrameTemplate")
-  s:SetScript("OnVerticalScroll", function() FauxScrollFrame_OnVerticalScroll(rowH, update) end)
+  s:SetScript("OnVerticalScroll", function(self, offset) FauxScrollFrame_OnVerticalScroll(self, offset, rowH, update) end)
   return s
 end
 CF.ui.Scroll = scrollFrame
@@ -78,7 +79,7 @@ local function selectTab(name)
 end
 
 local function createMainFrame()
-  frame = CreateFrame("Frame", "CraftingForeverFrame", UIParent)
+  frame = CreateFrame("Frame", "CraftingForeverFrame", UIParent, "BackdropTemplate")
   frame:SetWidth(620)
   frame:SetHeight(470)
   frame:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
@@ -92,8 +93,8 @@ local function createMainFrame()
   frame:EnableMouse(true)
   frame:SetMovable(true)
   frame:RegisterForDrag("LeftButton")
-  frame:SetScript("OnDragStart", function() this:StartMoving() end)
-  frame:SetScript("OnDragStop", function() this:StopMovingOrSizing() end)
+  frame:SetScript("OnDragStart", function(self, button) self:StartMoving() end)
+  frame:SetScript("OnDragStop", function(self, button) self:StopMovingOrSizing() end)
   frame:Hide()
   table.insert(UISpecialFrames, "CraftingForeverFrame")
 
@@ -109,7 +110,7 @@ local function createMainFrame()
     local key = def[1]
     local t = CF.ui.Button(frame, CF.L[def[2]], 140, 22)
     t:SetPoint("TOPLEFT", frame, "TOPLEFT", x, -40)
-    t:SetScript("OnClick", function() selectTab(key) end)
+    t:SetScript("OnClick", function(self, button) selectTab(key) end)
     tabs[key] = t
     x = x + 144
 
@@ -145,9 +146,9 @@ R.results = {}
 
 local function selectedKeys()
   local keys = {}
-  for i = 1, table.getn(CF.PROFESSIONS) do
+  for i = 1, #CF.PROFESSIONS do
     local list = CF.materialOrder[CF.PROFESSIONS[i]] or {}
-    for j = 1, table.getn(list) do
+    for j = 1, #list do
       if CF.cdb.selected[list[j]] then table.insert(keys, list[j]) end
     end
   end
@@ -157,18 +158,18 @@ CF.SelectedKeys = selectedKeys
 
 local function updateSelectedText()
   local keys = selectedKeys()
-  if table.getn(keys) == 0 then
+  if #keys == 0 then
     R.selectedText:SetText("|cff888888" .. CF.L["Select one or more materials on the left."] .. "|r")
     return
   end
   local names = {}
-  for i = 1, table.getn(keys) do table.insert(names, CF.materials[keys[i]].name) end
+  for i = 1, #keys do table.insert(names, CF.materials[keys[i]].name) end
   R.selectedText:SetText(CF.L["Selected:"] .. " |cffffffff" .. table.concat(names, ", ") .. "|r")
 end
 
 local function updateMatList()
   local list = CF.materialOrder[R.prof] or {}
-  local n = table.getn(list)
+  local n = #list
   FauxScrollFrame_Update(R.matScroll, n, MAT_ROWS, MAT_ROW_H)
   local offset = FauxScrollFrame_GetOffset(R.matScroll)
   local rank = CF.SkillRank(R.prof)
@@ -210,25 +211,25 @@ local function updateResults()
     local row = R.resultRows[i]
     local r = R.results[i]
     if r then
-      local z = CraftingForever_Zones[r.area]
+      local z = CF.ZoneInfo(r.area)
       row.r = r
       row.line1:SetText(string.format("%d. |cffffd100%s|r (%d-%d) - %s", i, CF.ZoneName(r.area), z[4], z[5], scopeText(r)))
       local parts = {}
-      for j = 1, table.getn(r.keys) do
+      for j = 1, #r.keys do
         local k = r.keys[j]
         local v = r.perMat[k] or 0
         local color = v >= 0.5 and "ffffff" or "ff4040"
         table.insert(parts, string.format("|cff%s%s %d|r", color, CF.materials[k].name, math.floor(v + 0.5)))
       end
       row.line2:SetText(string.format(CF.L["~%d gathers/h, lap %s, %d stops"], math.floor(r.perHour + 0.5),
-        CF.FormatTime(r.lap), table.getn(r.points)) .. " - " .. table.concat(parts, ", "))
+        CF.FormatTime(r.lap), #r.points) .. " - " .. table.concat(parts, ", "))
       if active and active.area == r.area and active.keys == r.keys then row.sel:Show() else row.sel:Hide() end
       row:Show()
     else
       row:Hide()
     end
   end
-  if table.getn(R.results) == 0 and R.searched then
+  if #R.results == 0 and R.searched then
     R.status:SetText("|cffff8040" .. CF.L["No routes found. Try other materials or untick the zone filters."] .. "|r")
   elseif active then
     R.status:SetText(string.format(CF.L["Active: %s, ~%d gathers/h, lap %s."],
@@ -247,7 +248,7 @@ end
 
 local function search()
   local keys = selectedKeys()
-  if table.getn(keys) == 0 then
+  if #keys == 0 then
     CF.Print(CF.L["Select at least one material first."])
     return
   end
@@ -257,7 +258,7 @@ end
 function CF.ui.BuildRoutesPanel(p)
   -- profession filter: icon buttons
   R.profButtons = {}
-  for i = 1, table.getn(CF.PROFESSIONS) do
+  for i = 1, #CF.PROFESSIONS do
     local prof = CF.PROFESSIONS[i]
     local b = CreateFrame("Button", nil, p)
     b:SetWidth(22)
@@ -268,24 +269,24 @@ function CF.ui.BuildRoutesPanel(p)
     hl:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
     hl:SetBlendMode("ADD")
     hl:SetAllPoints(b)
-    b:SetScript("OnClick", function()
+    b:SetScript("OnClick", function(self, button)
       R.prof = prof
-      getglobal("CraftingForeverMatScrollScrollBar"):SetValue(0)
+      _G["CraftingForeverMatScrollScrollBar"]:SetValue(0)
       updateMatList()
     end)
-    b:SetScript("OnEnter", function()
-      GameTooltip:SetOwner(this, "ANCHOR_TOP")
+    b:SetScript("OnEnter", function(self, button)
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
       GameTooltip:AddLine(CF.ProfName(prof))
       GameTooltip:Show()
     end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:SetScript("OnLeave", function(self, button) GameTooltip:Hide() end)
     R.profButtons[prof] = b
   end
   R.profLabel = CF.ui.Text(p, "GameFontNormal")
-  R.profLabel:SetPoint("TOPLEFT", p, "TOPLEFT", table.getn(CF.PROFESSIONS) * 25 + 6, -4)
+  R.profLabel:SetPoint("TOPLEFT", p, "TOPLEFT", #CF.PROFESSIONS * 25 + 6, -4)
 
   -- material list
-  local listBox = CreateFrame("Frame", nil, p)
+  local listBox = CreateFrame("Frame", nil, p, "BackdropTemplate")
   listBox:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -24)
   listBox:SetWidth(236)
   listBox:SetHeight(MAT_ROWS * MAT_ROW_H + 8)
@@ -321,31 +322,31 @@ function CF.ui.BuildRoutesPanel(p)
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
     row.skill = CF.ui.Text(row, "GameFontNormalSmall", "RIGHT")
     row.skill:SetPoint("RIGHT", row, "RIGHT", -2, 0)
-    row:SetScript("OnClick", function()
+    row:SetScript("OnClick", function(self, button)
       local sel = CF.cdb.selected
-      if sel[this.key] then sel[this.key] = nil else sel[this.key] = true end
+      if sel[self.key] then sel[self.key] = nil else sel[self.key] = true end
       updateMatList()
     end)
-    row:SetScript("OnEnter", function()
-      local m = CF.materials[this.key]
-      GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+    row:SetScript("OnEnter", function(self, button)
+      local m = CF.materials[self.key]
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
       GameTooltip:AddLine(m.name, 1, 1, 1)
       GameTooltip:AddLine(string.format("%s %d", CF.ProfName(m.prof), m.skill), 0.8, 0.8, 0.8)
       if m.nodes then
         local names = {}
         local objects = CF.LDB.objects or {}
-        for j = 1, table.getn(m.nodes) do table.insert(names, objects[m.nodes[j]] or m.nodes[j]) end
+        for j = 1, #m.nodes do table.insert(names, objects[m.nodes[j]] or m.nodes[j]) end
         GameTooltip:AddLine(table.concat(names, ", "), 0.6, 0.6, 0.6, 1)
       end
       GameTooltip:Show()
     end)
-    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    row:SetScript("OnLeave", function(self, button) GameTooltip:Hide() end)
     R.matRows[i] = row
   end
 
   local clearSel = CF.ui.Button(p, CF.L["Clear selection"], 130, 20)
   clearSel:SetPoint("TOPLEFT", listBox, "BOTTOMLEFT", 0, -4)
-  clearSel:SetScript("OnClick", function()
+  clearSel:SetScript("OnClick", function(self, button)
     CF.cdb.selected = {}
     updateMatList()
   end)
@@ -357,7 +358,7 @@ function CF.ui.BuildRoutesPanel(p)
     { "Minimap icons", "minimapPins" },
   }
   local prev = clearSel
-  for i = 1, table.getn(opts) do
+  for i = 1, #opts do
     local label, setting = opts[i][1], opts[i][2]
     local c = CF.ui.Check(p, CF.L[label],
       function() return CF.settings[setting] end,
@@ -414,13 +415,13 @@ function CF.ui.BuildRoutesPanel(p)
     row.line2:SetPoint("TOPLEFT", row.line1, "BOTTOMLEFT", 0, -2)
     row.line2:SetWidth(344)
     row.line2:SetHeight(14)
-    row:SetScript("OnClick", function()
-      CF.SetActiveRoute(this.r)
+    row:SetScript("OnClick", function(self, button)
+      CF.SetActiveRoute(self.r)
       updateResults()
     end)
-    row:SetScript("OnDoubleClick", function()
-      CF.SetActiveRoute(this.r)
-      CF.ShowZoneOnMap(this.r.area)
+    row:SetScript("OnDoubleClick", function(self, button)
+      CF.SetActiveRoute(self.r)
+      CF.ShowZoneOnMap(self.r.area)
     end)
     row:Hide()
     R.resultRows[i] = row
@@ -428,12 +429,12 @@ function CF.ui.BuildRoutesPanel(p)
 
   local showMap = CF.ui.Button(right, CF.L["Show on map"], 116, 22)
   showMap:SetPoint("BOTTOMLEFT", right, "BOTTOMLEFT", 0, 22)
-  showMap:SetScript("OnClick", function()
+  showMap:SetScript("OnClick", function(self, button)
     if CF.activeRoute then CF.ShowZoneOnMap(CF.activeRoute.area) end
   end)
   local clear = CF.ui.Button(right, CF.L["Clear route"], 116, 22)
   clear:SetPoint("LEFT", showMap, "RIGHT", 6, 0)
-  clear:SetScript("OnClick", function()
+  clear:SetScript("OnClick", function(self, button)
     CF.SetActiveRoute(nil)
     updateResults()
   end)
@@ -443,7 +444,7 @@ function CF.ui.BuildRoutesPanel(p)
   R.status:SetWidth(350)
   R.status:SetHeight(20)
 
-  p:SetScript("OnShow", function()
+  p:SetScript("OnShow", function(self, button)
     updateMatList()
     updateResults()
   end)
@@ -487,26 +488,26 @@ CF.On("INIT", function()
   border:SetHeight(54)
   border:SetPoint("TOPLEFT", b, "TOPLEFT", 0, 0)
 
-  b:SetScript("OnClick", function()
-    if arg1 == "RightButton" then CF.ToggleTracker() else CF.ToggleMainFrame() end
+  b:SetScript("OnClick", function(self, button)
+    if button == "RightButton" then CF.ToggleTracker() else CF.ToggleMainFrame() end
   end)
-  b:SetScript("OnDragStart", function()
-    this:SetScript("OnUpdate", function()
+  b:SetScript("OnDragStart", function(self, button)
+    self:SetScript("OnUpdate", function(self, button)
       local mx, my = Minimap:GetCenter()
       local cx, cy = GetCursorPosition()
       local scale = Minimap:GetEffectiveScale()
       CF.settings.minimapButtonAngle = math.deg(math.atan2(cy / scale - my, cx / scale - mx))
-      positionMinimapButton(this)
+      positionMinimapButton(self)
     end)
   end)
-  b:SetScript("OnDragStop", function() this:SetScript("OnUpdate", nil) end)
-  b:SetScript("OnEnter", function()
-    GameTooltip:SetOwner(this, "ANCHOR_LEFT")
+  b:SetScript("OnDragStop", function(self, button) self:SetScript("OnUpdate", nil) end)
+  b:SetScript("OnEnter", function(self, button)
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine("CraftingForever")
     GameTooltip:AddLine(CF.L["Left-click: routes & guides"], 0.8, 0.8, 0.8)
     GameTooltip:AddLine(CF.L["Right-click: toggle guide tracker"], 0.8, 0.8, 0.8)
     GameTooltip:Show()
   end)
-  b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  b:SetScript("OnLeave", function(self, button) GameTooltip:Hide() end)
   positionMinimapButton(b)
 end)

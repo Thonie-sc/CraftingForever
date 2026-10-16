@@ -1,12 +1,19 @@
-## Interface: 11200
+## Interface: 16001
 ## Title: CraftingForever
 ## Notes: Gathering routes for Mining, Herbalism, Skinning and Fishing, gathered node map icons and automatic profession leveling guides.
 ## Notes-deDE: Sammelrouten für Bergbau, Kräuterkunde, Kürschnerei und Angeln, Kartensymbole für gesammelte Fundorte und automatische Berufs-Anleitungen.
 ## Notes-esES: Rutas de recolección para minería, herboristería, desuello y pesca, iconos de nodos recolectados en el mapa y guías de profesiones automáticas.
+## Notes-esMX: Rutas de recolección para minería, herboristería, desuello y pesca, iconos de nodos recolectados en el mapa y guías de profesiones automáticas.
 ## Author: CraftingForever
-## Version: 0.2.0
+## Version: 0.3.0
+## IconTexture: Interface\Icons\Trade_Mining
 ## SavedVariables: CraftingForeverDB
 ## SavedVariablesPerCharacter: CraftingForeverCharDB
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\HereBeDragons\HereBeDragons-2.0.lua
+Libs\HereBeDragons\HereBeDragons-Pins-2.0.lua
 
 Data\Zones.lua
 Data\Nodes.lua
@@ -21,6 +28,5 @@ Position.lua
 Route.lua
 Gather.lua
 MapPins.lua
-Minimap.lua
 UI.lua
 GuideUI.lua

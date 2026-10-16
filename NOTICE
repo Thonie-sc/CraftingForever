@@ -23,3 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Creature levels and skinning loot in Data/Skinning.lua are derived from the CMaNGOS classic-db world database (https://github.com/cmangos/classic-db).
+
+Bundled libraries (Libs/):
+- LibStub: public domain.
+- CallbackHandler-1.0: BSD license, by the WowAce community (https://www.wowace.com/projects/callbackhandler).
+- HereBeDragons 2.0 (v35) and HereBeDragons-Pins: BSD license, by Nevcairiel (https://github.com/Nevcairiel/HereBeDragons).

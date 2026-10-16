@@ -1,6 +1,6 @@
 # CraftingForever
 
-A World of Warcraft **1.12** (vanilla, Interface 11200) addon for WoW: Forever that covers gathering routes, gathered-node tracking and profession leveling guides, in English, German and Spanish.
+An addon for **WoW: Forever** (Blizzard's Forever client: Interface `16001`, modern 12.0-based engine with Classic Era content). It covers gathering routes, gathered-node tracking and profession leveling guides, in English, German and Spanish.
 
 ## Features
 
@@ -28,7 +28,7 @@ A World of Warcraft **1.12** (vanilla, Interface 11200) addon for WoW: Forever t
 
 **Languages**
 - English, German (deDE) and Spanish (esES/esMX) clients. The interface and guide notes are translated, and item, herb, ore, zone, NPC and creature names come from the client's language data.
-- Gathering is recognised in every language: Mining, Skinning and Fishing by the localized profession name, and herbs by the herb under the mouse.
+- Gathering is recognised in every language, because spells and loot are matched by ID.
 
 ## How routes are ranked
 
@@ -42,7 +42,17 @@ For each zone, the planner tries the whole zone and circles of 600, 1000 and 160
 
 ## Installation
 
-Copy (or `git clone`) this folder into `World of Warcraft/Interface/AddOns/` and make sure the folder is named exactly `CraftingForever`.
+WoW: Forever keeps its own AddOns folder, separate from Retail and Classic Era:
+
+```
+World of Warcraft\_classic_beta_\Interface\AddOns\CraftingForever\CraftingForever.toc
+```
+
+1. Download the repository (or the branch) as a zip and extract it.
+2. Move the extracted folder into `World of Warcraft\_classic_beta_\Interface\AddOns\`.
+3. Rename the folder to exactly `CraftingForever`. GitHub zips are named like `CraftingForever-main`, and the game ignores a folder whose name doesn't match the `.toc` file.
+4. Make sure `CraftingForever.toc` sits directly inside that folder, not one level deeper.
+5. Restart the game completely; a `/reload` doesn't detect new addons. Then check that CraftingForever is ticked under AddOns on the character select screen.
 
 ## Usage
 
@@ -59,7 +69,8 @@ Minimap button: left-click opens the window, right-click toggles the tracker, dr
 ## Known limitations
 
 - Enchanting recipe names are spells, not items, so they stay in English in German and Spanish clients. Their recipe colour and real reagents are only picked up on English clients.
-- Built-in node, zone and mob data is standard 1.12 data. If WoW: Forever adds custom zones or spawns, those only appear through the nodes you gather yourself.
+- Real recipe reagents are read through the classic trade skill functions. If the Forever client doesn't provide them, the guides use their built-in reagent lists.
+- Built-in node, zone and mob data is Classic (1.12) world data, which WoW: Forever uses. Zones that are new in Forever, such as Zephras Isle, have no bundled data; nodes you gather there are still recorded, shown and used for routes.
 - Crafting guide reagents marked `*` are approximate until you open the profession window once.
 
 ## Data and regeneration
@@ -77,14 +88,14 @@ python3 tools/gen_data.py <path/to/pfQuest/db> <path/to/ClassicDB_1_12_1_*.sql[.
 
 ## Development
 
-`tools/test/harness.lua` runs the addon under a stock Lua 5.0 interpreter against a small mock of the 1.12 API. It covers file loading, route finding, gather recording and UI construction:
+`tools/test/harness.lua` runs the addon under a stock Lua 5.1 interpreter against a small mock of the WoW: Forever API and HereBeDragons. It covers file loading, route finding, gather recording and UI construction. The second argument picks which profession API the mock offers:
 
 ```
-lua5.0 tools/test/harness.lua enUS
-lua5.0 tools/test/harness.lua deDE
-lua5.0 tools/test/harness.lua esES
+lua5.1 tools/test/harness.lua enUS professions
+lua5.1 tools/test/harness.lua deDE skilllines
+lua5.1 tools/test/harness.lua esES professions
 ```
 
 The German and Spanish runs also check that every UI string and guide note has a translation with matching `%` specifiers and `{item:...}` tokens.
 
-Code must stay Lua 5.0 compatible: no `#`, no `%` (use `math.mod`), no `string.match`/`gmatch`, and use `this`/`arg1` in scripts.
+The client runs a modern engine, so many legacy globals are missing or broken. Prefer the `C_*` APIs, and wrap optional legacy calls in `pcall`. Zones are identified by `uiMapID` everywhere.

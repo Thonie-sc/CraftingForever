@@ -12,7 +12,7 @@ local COLOR = {
 -- guides for professions the character has, in display order
 local function knownGuides()
   local list = {}
-  for i = 1, table.getn(CF.GUIDE_ORDER) do
+  for i = 1, #CF.GUIDE_ORDER do
     local k = CF.GUIDE_ORDER[i]
     if CF.profs[k] then table.insert(list, k) end
   end
@@ -24,20 +24,20 @@ local function zoneNames(step)
   if not step.zones then return nil end
   local list = step.zones[CF.PlayerFaction()] or {}
   local names = {}
-  for i = 1, table.getn(list) do table.insert(names, CF.ZoneName(list[i])) end
+  for i = 1, #list do table.insert(names, CF.ZoneName(list[i])) end
   return table.concat(names, ", ")
 end
 
 local function matNames(step)
   local names = {}
-  for i = 1, table.getn(step.mats) do
+  for i = 1, #step.mats do
     local m = CF.materials[step.mats[i]]
     if m then table.insert(names, m.name) end
   end
   return table.concat(names, ", ")
 end
 
--- crafts still needed in this step for the current rank (rough estimate)
+-- crafts still needed in self step for the current rank (rough estimate)
 local function craftsLeft(step, rank)
   if rank <= step.from then return step.n end
   if rank >= step.to then return 0 end
@@ -50,10 +50,11 @@ local function reagentText(step, crafts)
     return "|cff888888" .. CF.L["Reagents unknown - open your profession window once to load them."] .. "|r"
   end
   local parts = {}
-  for i = 1, table.getn(mats) do
+  for i = 1, #mats do
     local name, per = mats[i][1], mats[i][2]
     local need = per * crafts
-    local have = CF.CountInBags(name)
+    local id = mats[i][3] or CraftingForever_ItemIDs[name]
+    local have = CF.ItemCount(id)
     local color = have >= need and "|cff40ff40" or "|cffffffff"
     table.insert(parts, string.format("%s%s %d/%d|r", color, name, have, need))
   end
@@ -65,11 +66,11 @@ function CF.FindGuideRoute(step)
   local list = step.zones and step.zones[CF.PlayerFaction()]
   if list then
     zones = {}
-    for i = 1, table.getn(list) do zones[list[i]] = true end
+    for i = 1, #list do zones[list[i]] = true end
   end
-  for i = 1, table.getn(step.mats) do CF.cdb.selected[step.mats[i]] = true end
+  for i = 1, #step.mats do CF.cdb.selected[step.mats[i]] = true end
   local results = CF.ui.RunRouteSearch(step.mats, zones)
-  if table.getn(results) == 0 then
+  if #results == 0 then
     -- the recommended zones may all be filtered; fall back to everywhere
     results = CF.ui.RunRouteSearch(step.mats)
   end
@@ -109,7 +110,7 @@ local function updateSteps()
   G.hint:SetText(CF.TrainerHint(key) or "")
 
   local steps = g.steps
-  local n = table.getn(steps)
+  local n = #steps
   FauxScrollFrame_Update(G.scroll, n, ROWS, ROW_H)
   local offset = FauxScrollFrame_GetOffset(G.scroll)
   for i = 1, ROWS do
@@ -151,7 +152,7 @@ local function updateGuideButtons()
   if not G.key or not CF.Guides[G.key] or (not G.showAll and not CF.profs[G.key]) then
     G.key = list[1]
   end
-  for i = 1, table.getn(G.buttons) do
+  for i = 1, #G.buttons do
     local b = G.buttons[i]
     local key = list[i]
     if key then
@@ -170,14 +171,14 @@ CF.UpdateGuide = function() if G.rows then updateGuideButtons() end end
 function CF.ui.BuildGuidePanel(p)
   G.panel = p
   G.buttons = {}
-  for i = 1, table.getn(CF.GUIDE_ORDER) do
+  for i = 1, #CF.GUIDE_ORDER do
     local b = CF.ui.Button(p, "", 92, 20)
-    local col = math.mod(i - 1, 5)
+    local col = (i - 1) % 5
     local line = math.floor((i - 1) / 5)
     b:SetPoint("TOPLEFT", p, "TOPLEFT", col * 94, -line * 22)
-    b:SetScript("OnClick", function()
-      G.key = this.key
-      getglobal("CraftingForeverGuideScrollScrollBar"):SetValue(0)
+    b:SetScript("OnClick", function(self, button)
+      G.key = self.key
+      _G["CraftingForeverGuideScrollScrollBar"]:SetValue(0)
       updateGuideButtons()
     end)
     G.buttons[i] = b
@@ -197,7 +198,7 @@ function CF.ui.BuildGuidePanel(p)
   G.hint:SetPoint("LEFT", G.header, "RIGHT", 12, 0)
   G.hint:SetTextColor(1, 0.4, 0.4)
 
-  local box = CreateFrame("Frame", nil, p)
+  local box = CreateFrame("Frame", nil, p, "BackdropTemplate")
   box:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -92)
   box:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", 0, 14)
   box:SetBackdrop({
@@ -232,7 +233,7 @@ function CF.ui.BuildGuidePanel(p)
     row.line2:SetHeight(14)
     row.route = CF.ui.Button(row, CF.L["Find route"], 76, 20)
     row.route:SetPoint("RIGHT", row, "RIGHT", -2, 0)
-    row.route:SetScript("OnClick", function() CF.FindGuideRoute(this:GetParent().step) end)
+    row.route:SetScript("OnClick", function(self, button) CF.FindGuideRoute(self:GetParent().step) end)
     G.rows[i] = row
   end
 
@@ -254,7 +255,7 @@ local function updateTracker()
   if not tracker or not tracker:IsVisible() then return end
   local list = knownGuides()
   local shown = 0
-  for i = 1, table.getn(list) do
+  for i = 1, #list do
     if shown >= TRACK_LINES then break end
     local key = list[i]
     local g, p = CF.Guides[key], CF.profs[key]
@@ -289,7 +290,7 @@ local function updateTracker()
 end
 
 local function createTracker()
-  tracker = CreateFrame("Frame", "CraftingForeverTracker", UIParent)
+  tracker = CreateFrame("Frame", "CraftingForeverTracker", UIParent, "BackdropTemplate")
   tracker:SetWidth(330)
   tracker:SetHeight(60)
   tracker:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -200, -220)
@@ -304,10 +305,10 @@ local function createTracker()
   tracker:SetMovable(true)
   tracker:SetClampedToScreen(true)
   tracker:RegisterForDrag("LeftButton")
-  tracker:SetScript("OnDragStart", function() this:StartMoving() end)
-  tracker:SetScript("OnDragStop", function() this:StopMovingOrSizing() end)
-  tracker:SetScript("OnMouseUp", function()
-    if arg1 == "RightButton" then CF.ShowMainFrame("guide") end
+  tracker:SetScript("OnDragStart", function(self, button) self:StartMoving() end)
+  tracker:SetScript("OnDragStop", function(self, button) self:StopMovingOrSizing() end)
+  tracker:SetScript("OnMouseUp", function(self, button)
+    if button == "RightButton" then CF.ShowMainFrame("guide") end
   end)
 
   local title = CF.ui.Text(tracker, "GameFontNormalSmall")

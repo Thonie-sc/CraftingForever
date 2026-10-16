@@ -40,7 +40,7 @@ for key, d in pairs(CraftingForever_GatherDB) do
   end
   add(key, { prof = d.prof, item = d.item, name = name, nameEN = d.name, skill = d.skill,
              nodes = d.nodes, zones = d.zones })
-  for i = 1, table.getn(d.nodes) do
+  for i = 1, #d.nodes do
     CF.nodeNameToMat[string.lower(d.nodes[i])] = key
     if objectNames[d.nodes[i]] then
       CF.nodeNameToMat[string.lower(objectNames[d.nodes[i]])] = key
@@ -73,51 +73,15 @@ for _, list in pairs(CF.materialOrder) do
   end)
 end
 
--- Item icons: the client only knows textures of items it has cached, so remember
--- every texture we see (loot window, bags) and fall back to the profession icon.
 function CF.MaterialIcon(key)
   local m = CF.materials[key]
   if not m then return "Interface\\Icons\\INV_Misc_QuestionMark" end
   if m.item == 0 then return CF.PROF_ICON[m.prof] end
-  local tex = CF.db and CF.db.icons[m.item]
-  if tex then return tex end
-  local _, _, _, _, _, _, _, _, itemTex = GetItemInfo(m.item)
-  if itemTex then
-    if CF.db then CF.db.icons[m.item] = itemTex end
-    return itemTex
-  end
-  return CF.PROF_ICON[m.prof]
+  return C_Item.GetItemIconByID(m.item) or CF.PROF_ICON[m.prof]
 end
 
-function CF.ScanBagIcons()
-  for bag = 0, 4 do
-    for slot = 1, GetContainerNumSlots(bag) do
-      local link = GetContainerItemLink(bag, slot)
-      if link then
-        local _, _, id = string.find(link, "item:(%d+)")
-        id = tonumber(id)
-        if id and CF.itemToMat[id] then
-          local tex = GetContainerItemInfo(bag, slot)
-          if tex then CF.db.icons[id] = tex end
-        end
-      end
-    end
-  end
+-- Number of an item in the player's bags.
+function CF.ItemCount(itemID)
+  if not itemID then return 0 end
+  return C_Item.GetItemCount(itemID) or 0
 end
-
--- Number of an item (by name) in the player's bags.
-function CF.CountInBags(itemName)
-  local total = 0
-  for bag = 0, 4 do
-    for slot = 1, GetContainerNumSlots(bag) do
-      local link = GetContainerItemLink(bag, slot)
-      if link and string.find(link, "[" .. itemName .. "]", 1, true) then
-        local _, count = GetContainerItemInfo(bag, slot)
-        total = total + (count or 1)
-      end
-    end
-  end
-  return total
-end
-
-CF.RegisterEvent("PLAYER_ENTERING_WORLD", function() CF.ScanBagIcons() end)
