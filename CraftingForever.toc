@@ -1,0 +1,22 @@
+## Interface: 11200
+## Title: CraftingForever
+## Notes: Gathering routes for Mining, Herbalism and Skinning, gathered node map icons and automatic profession leveling guides.
+## Author: CraftingForever
+## Version: 0.1.0
+## SavedVariables: CraftingForeverDB
+## SavedVariablesPerCharacter: CraftingForeverCharDB
+
+Data\Zones.lua
+Data\Nodes.lua
+Data\Skinning.lua
+Core.lua
+Materials.lua
+Data\Guides.lua
+Professions.lua
+Position.lua
+Route.lua
+Gather.lua
+MapPins.lua
+Minimap.lua
+UI.lua
+GuideUI.lua
