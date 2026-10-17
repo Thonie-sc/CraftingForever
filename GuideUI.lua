@@ -282,12 +282,18 @@ local function updateTracker()
       line:Show()
     end
   end
-  for i = shown + 1, TRACK_LINES do tracker.lines[i]:Hide() end
   if shown == 0 then
+    shown = 1
     tracker.lines[1]:SetText("|cff888888" .. CF.L["No profession to level."] .. "|r")
     tracker.lines[1]:Show()
-    shown = 1
   end
+  local stations = CF.NearestStationsText()
+  if stations and shown < TRACK_LINES + 1 then
+    shown = shown + 1
+    tracker.lines[shown]:SetText("|cff80c0ff" .. stations .. "|r")
+    tracker.lines[shown]:Show()
+  end
+  for i = shown + 1, TRACK_LINES + 1 do tracker.lines[i]:Hide() end
   tracker:SetHeight(26 + shown * 14)
 end
 
@@ -318,7 +324,7 @@ local function createTracker()
   title:SetText("CraftingForever  |cff888888" .. CF.L["(right-click for guide)"] .. "|r")
 
   tracker.lines = {}
-  for i = 1, TRACK_LINES do
+  for i = 1, TRACK_LINES + 1 do  -- the extra line holds the nearest anvil/forge
     local l = CF.ui.Text(tracker, "GameFontHighlightSmall")
     l:SetPoint("TOPLEFT", tracker, "TOPLEFT", 8, -8 - i * 14)
     l:SetWidth(316)
@@ -326,6 +332,15 @@ local function createTracker()
     tracker.lines[i] = l
   end
   tracker:SetScript("OnShow", updateTracker)
+  -- distances to the nearest anvil/forge change as you move
+  local elapsed = 0
+  tracker:SetScript("OnUpdate", function(_, dt)
+    elapsed = elapsed + dt
+    if elapsed >= 2 then
+      elapsed = 0
+      updateTracker()
+    end
+  end)
 end
 
 function CF.ToggleTracker()

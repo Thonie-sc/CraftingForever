@@ -4,7 +4,7 @@ local CF = CraftingForever
 
 local frame
 local tabs, panels = {}, {}
-local MAT_ROWS, MAT_ROW_H = 12, 20
+local MAT_ROWS, MAT_ROW_H = 11, 20
 local RESULT_ROWS, RESULT_ROW_H = 7, 32
 
 CF.ui = {}
@@ -369,6 +369,7 @@ function CF.ui.BuildRoutesPanel(p)
     { "Show gathered nodes", "showLearned" },
     { "Show route", "showRoute" },
     { "Minimap icons", "minimapPins" },
+    { "Show anvils & forges", "showStations" },
   }
   local prev = clearSel
   for i = 1, #opts do

@@ -15,6 +15,11 @@ local usedWorld, usedMini = 0, 0
 
 local function pinOnEnter(self)
   GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+  if self.station then
+    GameTooltip:AddLine(CF.L[CF.STATIONS[self.station].label], 1, 1, 1)
+    GameTooltip:Show()
+    return
+  end
   local m = CF.materials[self.key]
   GameTooltip:AddLine(m and m.name or "?", 1, 1, 1)
   if self.learned then
@@ -44,7 +49,7 @@ local function newPin()
 end
 
 local function setupPin(pin, key, size, alpha, learned, mob, index)
-  pin.key, pin.learned, pin.mob, pin.index = key, learned, mob, index
+  pin.key, pin.learned, pin.mob, pin.index, pin.station = key, learned, mob, index, nil
   pin.icon:SetTexture(CF.MaterialIcon(key))
   pin:SetSize(size, size)
   pin:SetAlpha(alpha)
@@ -91,6 +96,24 @@ local function refreshIcons()
         HBDP:AddMinimapIconMap(REF, mpin, r.area, p.x / 100, p.y / 100, false, false)
       end
     end
+  end
+
+  for kind in pairs(CF.WantedStations()) do
+    local def = CF.STATIONS[kind]
+    CF.ForEachStation(kind, function(map, x, y)
+      local pin = worldPin()
+      setupPin(pin, nil, s.pinSize, 1)
+      pin.station = kind
+      pin.icon:SetTexture(def.icon)
+      HBDP:AddWorldMapIconMap(REF, pin, map, x / 100, y / 100)
+      if s.minimapPins then
+        local mpin = miniPin()
+        setupPin(mpin, nil, s.minimapPinSize, 1)
+        mpin.station = kind
+        mpin.icon:SetTexture(def.icon)
+        HBDP:AddMinimapIconMap(REF, mpin, map, x / 100, y / 100, false, false)
+      end
+    end)
   end
 
   if s.showLearned then
@@ -162,3 +185,4 @@ end)
 CF.RegisterEvent("PLAYER_ENTERING_WORLD", refreshIcons)
 CF.On("NODES_UPDATED", CF.UpdateWorldMap)
 CF.On("ROUTE_CHANGED", CF.UpdateWorldMap)
+CF.On("PROFESSIONS_UPDATED", CF.UpdateWorldMap)

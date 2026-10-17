@@ -43,8 +43,14 @@ T.deDE = {
   ["Last:"] = "Zuletzt:",
   ["Route cleared."] = "Route gelöscht.",
   ["All gathered nodes have been removed."] = "Alle gesammelten Fundorte wurden entfernt.",
-  ["/cf - toggle window, /cf routes, /cf guide, /cf tracker, /cf clear (route), /cf resetnodes"] =
-    "/cf - Fenster ein/aus, /cf routes, /cf guide, /cf tracker, /cf clear (Route), /cf resetnodes",
+  ["/cf - toggle window, /cf routes, /cf guide, /cf tracker, /cf nearest (anvil/forge), /cf clear (route), /cf resetnodes"] =
+    "/cf - Fenster ein/aus, /cf routes, /cf guide, /cf tracker, /cf nearest (Amboss/Schmiede), /cf clear (Route), /cf resetnodes",
+  ["Show anvils & forges"] = "Ambosse & Schmieden zeigen",
+  ["Anvil"] = "Amboss",
+  ["Forge"] = "Schmiede",
+  ["%s: %d yd (%.1f, %.1f)"] = "%s: %d Yards (%.1f, %.1f)",
+  ["%s: none in this zone"] = "%s: keine in diesem Gebiet",
+  ["None of your professions uses anvils or forges."] = "Keiner deiner Berufe benötigt Ambosse oder Schmieden.",
   -- guide tab / tracker
   ["All guides"] = "Alle Anleitungen",
   ["Find route"] = "Route finden",
@@ -135,8 +141,14 @@ T.esES = {
   ["Last:"] = "Última vez:",
   ["Route cleared."] = "Ruta borrada.",
   ["All gathered nodes have been removed."] = "Se han borrado todos los nodos recolectados.",
-  ["/cf - toggle window, /cf routes, /cf guide, /cf tracker, /cf clear (route), /cf resetnodes"] =
-    "/cf - mostrar ventana, /cf routes, /cf guide, /cf tracker, /cf clear (ruta), /cf resetnodes",
+  ["/cf - toggle window, /cf routes, /cf guide, /cf tracker, /cf nearest (anvil/forge), /cf clear (route), /cf resetnodes"] =
+    "/cf - mostrar ventana, /cf routes, /cf guide, /cf tracker, /cf nearest (yunque/forja), /cf clear (ruta), /cf resetnodes",
+  ["Show anvils & forges"] = "Mostrar yunques y forjas",
+  ["Anvil"] = "Yunque",
+  ["Forge"] = "Forja",
+  ["%s: %d yd (%.1f, %.1f)"] = "%s: %d m (%.1f, %.1f)",
+  ["%s: none in this zone"] = "%s: no hay en esta zona",
+  ["None of your professions uses anvils or forges."] = "Ninguna de tus profesiones usa yunques ni forjas.",
   -- guide tab / tracker
   ["All guides"] = "Todas las guías",
   ["Find route"] = "Buscar ruta",

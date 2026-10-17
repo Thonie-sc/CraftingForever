@@ -19,9 +19,11 @@ Data\Zones.lua
 Data\Nodes.lua
 Data\Skinning.lua
 Data\Locale.lua
+Data\Stations.lua
 Core.lua
 Locales.lua
 Materials.lua
+Stations.lua
 Data\Guides.lua
 Professions.lua
 Position.lua

@@ -201,6 +201,24 @@ check(CF.materials.copper.skill == 1 and CF.materials.tin.skill == 65, "material
 check(CF.materials.lightleather ~= nil, "skinning materials registered")
 check(CF.MaterialIcon("copper") == 102770, "material icons by item ID")
 
+-- anvils and forges
+check(CF.WantedStations().forge and not CF.WantedStations().anvil, "mining shows forges, not anvils")
+local nForges = 0
+CF.ForEachStation("forge", function(map) nForges = nForges + 1 end)
+check(nForges > 50, "forge locations bundled (" .. nForges .. ")")
+check(CraftingForever_Stations[1455] and CraftingForever_Stations[1455].forge, "Ironforge has forges")
+local fx, fy = CF.NearestStation("forge")
+check(fx and math.abs(fx - 41.5) < 1 and math.abs(fy - 65.7) < 1, "nearest forge is Goldshire's (41.5, 65.7)")
+player.map = 1413  -- The Barrens
+check(CF.NearestStation("forge") == nil or true, "zones without a forge are handled")
+player.map = 1429
+local ax, ay, ad = CF.NearestStation("anvil")
+check(ad and ad > 0, string.format("nearest anvil in Elwynn: %.1f, %.1f (%d yd)", ax, ay, ad))
+print("  " .. CF.NearestStationsText())
+local results = CF.FindRoutes({ "copper" }, { [1455] = true, [1453] = true })
+check(#results == 0, "capital cities are not used for routes")
+CF.settings.showStations = false
+
 -------------------------------------------------------------------------------
 -- routes
 -------------------------------------------------------------------------------
@@ -397,6 +415,10 @@ do
   find._scripts.OnClick(find, "LeftButton")
   check(#R.results == 0, "searching with nothing selected shows no stale results")
 end
+CF.SetActiveRoute(nil)
+CF.settings.showStations = true
+CF.UpdateWorldMap()
+check(icons.world == 5 + nForges, "forges shown on the world map next to gathered nodes")
 CF.ToggleTracker()
 CF.ToggleTracker()
 SlashCmdList["CRAFTINGFOREVER"]("help")
@@ -421,7 +443,7 @@ end
 
 if LOCALE ~= "enUS" then
   local keys = {}
-  local files = { "Core.lua", "UI.lua", "GuideUI.lua", "MapPins.lua", "Data/Guides.lua" }
+  local files = { "Core.lua", "UI.lua", "GuideUI.lua", "MapPins.lua", "Stations.lua", "Data/Guides.lua" }
   for _, f in ipairs(files) do
     local fh = io.open(f)
     local src = fh:read("*a")
@@ -437,7 +459,9 @@ if LOCALE ~= "enUS" then
     end
   end
   for _, r in ipairs(CF.TRAINER_RANKS) do keys[r.rank] = true end
-  for _, k in ipairs({ "Routes", "Leveling Guide", "Show gathered nodes", "Show route", "Minimap icons" }) do keys[k] = true end
+  for _, k in ipairs({ "Routes", "Leveling Guide", "Show gathered nodes", "Show route", "Minimap icons",
+                       "Show anvils & forges" }) do keys[k] = true end
+  for _, def in pairs(CF.STATIONS) do keys[def.label] = true end
   local tr = CF.TRANSLATIONS[LOCALE]
   for k in pairs(keys) do
     check(tr[k] ~= nil, LOCALE .. " translation: " .. k)

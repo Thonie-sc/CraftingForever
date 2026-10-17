@@ -17,6 +17,7 @@ local DEFAULTS = {
   showLearned = true,     -- gathered nodes on the world map
   showRoute = true,       -- active route on the world map
   minimapPins = true,     -- gathered + route nodes on the minimap
+  showStations = true,    -- anvils and forges for mining / blacksmithing
   hideHighZones = true,   -- route finder skips zones far above your level
   hideEnemyZones = true,  -- route finder skips the other faction's territory
   pinSize = 14,
@@ -175,11 +176,13 @@ SlashCmdList["CRAFTINGFOREVER"] = function(msg)
   elseif cmd == "clear" then
     CF.SetActiveRoute(nil)
     CF.Print(CF.L["Route cleared."])
+  elseif cmd == "nearest" then
+    CF.Print(CF.NearestStationsText() or CF.L["None of your professions uses anvils or forges."])
   elseif cmd == "resetnodes" then
     CF.db.nodes = {}
     CF.Fire("NODES_UPDATED")
     CF.Print(CF.L["All gathered nodes have been removed."])
   else
-    CF.Print(CF.L["/cf - toggle window, /cf routes, /cf guide, /cf tracker, /cf clear (route), /cf resetnodes"])
+    CF.Print(CF.L["/cf - toggle window, /cf routes, /cf guide, /cf tracker, /cf nearest (anvil/forge), /cf clear (route), /cf resetnodes"])
   end
 end

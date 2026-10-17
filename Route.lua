@@ -36,7 +36,7 @@ local GATHER_TIME = { mining = 5, herbalism = 4, skinning = 25, fishing = 40 }
 
 local function zoneAllowed(area, opts)
   local z = CF.ZoneInfo(area)
-  if not z then return false end
+  if not z or CF.CITIES[area] then return false end
   if opts.hideEnemy and z[6] ~= "C" and z[6] ~= opts.faction then return false end
   if opts.hideHigh and z[4] > opts.level + 5 then return false end
   if opts.zones and not opts.zones[area] then return false end
