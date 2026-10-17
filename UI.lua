@@ -4,7 +4,7 @@ local CF = CraftingForever
 
 local frame
 local tabs, panels = {}, {}
-local MAT_ROWS, MAT_ROW_H = 15, 20
+local MAT_ROWS, MAT_ROW_H = 12, 20
 local RESULT_ROWS, RESULT_ROW_H = 7, 32
 
 CF.ui = {}
@@ -141,6 +141,7 @@ end
 -------------------------------------------------------------------------------
 
 local R = {}  -- routes tab widgets/state
+CF.ui.routes = R  -- exposed for the test harness
 R.prof = "mining"
 R.results = {}
 
@@ -249,10 +250,19 @@ end
 local function search()
   local keys = selectedKeys()
   if #keys == 0 then
-    CF.Print(CF.L["Select at least one material first."])
+    R.results, R.searched = {}, false
+    updateResults()
+    R.status:SetText("|cffff8040" .. CF.L["Select at least one material first."] .. "|r")
     return
   end
   CF.ui.RunRouteSearch(keys)
+end
+
+-- results belong to the selection they were found for; drop them when it changes
+local function selectionChanged()
+  R.results, R.searched = {}, false
+  updateMatList()
+  updateResults()
 end
 
 function CF.ui.BuildRoutesPanel(p)
@@ -305,6 +315,9 @@ function CF.ui.BuildRoutesPanel(p)
   R.matRows = {}
   for i = 1, MAT_ROWS do
     local row = CreateFrame("Button", nil, listBox)
+    -- above the scroll frame, which would otherwise swallow the clicks
+    row:SetFrameLevel(R.matScroll:GetFrameLevel() + 2)
+    row:RegisterForClicks("LeftButtonUp")
     row:SetWidth(206)
     row:SetHeight(MAT_ROW_H)
     row:SetPoint("TOPLEFT", listBox, "TOPLEFT", 5, -4 - (i - 1) * MAT_ROW_H)
@@ -325,7 +338,7 @@ function CF.ui.BuildRoutesPanel(p)
     row:SetScript("OnClick", function(self, button)
       local sel = CF.cdb.selected
       if sel[self.key] then sel[self.key] = nil else sel[self.key] = true end
-      updateMatList()
+      selectionChanged()
     end)
     row:SetScript("OnEnter", function(self, button)
       local m = CF.materials[self.key]
@@ -348,7 +361,7 @@ function CF.ui.BuildRoutesPanel(p)
   clearSel:SetPoint("TOPLEFT", listBox, "BOTTOMLEFT", 0, -4)
   clearSel:SetScript("OnClick", function(self, button)
     CF.cdb.selected = {}
-    updateMatList()
+    selectionChanged()
   end)
 
   -- display options

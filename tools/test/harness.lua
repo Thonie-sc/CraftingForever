@@ -14,7 +14,7 @@ PROF_API = arg and arg[2] or "professions"
 -------------------------------------------------------------------------------
 
 local registry = {}
-local frames = {}
+frames = {}
 local now = 1000
 
 local function newObject(name)
@@ -60,6 +60,7 @@ end
 function CreateFrame(kind, name, parent, template)
   local f = newObject(name)
   f._parent = parent
+  if parent then f._level = (parent._level or 0) + 1 end
   table.insert(frames, f)
   if name and template == "UICheckButtonTemplate" then f.text = newObject(name .. "Text") end
   if name and template == "FauxScrollFrameTemplate" then newObject(name .. "ScrollBar") end
@@ -364,6 +365,37 @@ print("  hint: " .. CF.TrainerHint("fishing"))
 check(not string.find(CF.TrainerHint("fishing"), "{"), "tokens replaced in hints")
 for _, key in ipairs(CF.GUIDE_ORDER) do
   check(CF.Guides[key] and #CF.Guides[key].steps > 0, "guide " .. key)
+end
+-- routes tab: clicking material rows drives the search, stale results are dropped
+do
+  local R = CF.ui.routes
+  check(CF.cdb.selected.tin and CF.cdb.selected.silver and not CF.cdb.selected.peacebloom,
+    "guide route replaces the selection with the step's materials")
+  check(#R.results > 0, "guide route results listed")
+  local function rowFor(key)
+    for _, row in ipairs(R.matRows) do if row.key == key then return row end end
+  end
+  R.matRows[1]:GetParent()  -- rows exist
+  _G.CF_TEST_CLICK = function(row) row._scripts.OnClick(row, "LeftButton") end
+  -- clear, then select copper only
+  CF.cdb.selected = {}
+  CF.ShowMainFrame("routes")
+  local copperRow = rowFor("copper")
+  check(copperRow ~= nil, "copper row in the material list")
+  check(copperRow:GetFrameLevel() > R.matScroll:GetFrameLevel(), "material rows sit above the scroll frame")
+  CF_TEST_CLICK(copperRow)
+  check(CF.cdb.selected.copper and CF.Count(CF.cdb.selected) == 1, "clicking a row selects only that material")
+  check(#R.results == 0, "changing the selection drops the old results")
+  local find
+  for _, f in ipairs(frames) do if f._text == CF.L["Find best routes"] then find = f end end
+  find._scripts.OnClick(find, "LeftButton")
+  check(#R.results > 0, "copper search listed")
+  for _, r in ipairs(R.results) do
+    check(#r.keys == 1 and r.keys[1] == "copper" and not r.perMat.tin, "copper-only result in " .. CF.ZoneName(r.area))
+  end
+  CF_TEST_CLICK(copperRow)
+  find._scripts.OnClick(find, "LeftButton")
+  check(#R.results == 0, "searching with nothing selected shows no stale results")
 end
 CF.ToggleTracker()
 CF.ToggleTracker()

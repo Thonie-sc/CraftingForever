@@ -68,6 +68,8 @@ function CF.FindGuideRoute(step)
     zones = {}
     for i = 1, #list do zones[list[i]] = true end
   end
+  -- the material list shows exactly what the route was found for
+  CF.cdb.selected = {}
   for i = 1, #step.mats do CF.cdb.selected[step.mats[i]] = true end
   local results = CF.ui.RunRouteSearch(step.mats, zones)
   if #results == 0 then
