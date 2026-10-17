@@ -34,6 +34,7 @@ local function newObject(name)
     SetWidth = function(self, w) self._w = w end,
     SetHeight = function(self, h) self._h = h end,
     SetSize = function(self, w, h) self._w, self._h = w, h end,
+    SetPoint = function(self, ...) self._point = { ... } end,
     GetWidth = function(self) return self._w end,
     GetHeight = function(self) return self._h end,
     GetFrameLevel = function(self) return self._level end,
@@ -72,6 +73,7 @@ setmetatable(_G, { __index = function(_, k) return registry[k] end })
 function hooksecurefunc(t, k, f) end
 UIParent = newObject("UIParent")
 Minimap = newObject("Minimap")
+Minimap._w, Minimap._h = 198, 198  -- the Forever client's minimap size
 GameTooltip = newObject("GameTooltip")
 DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) print("[chat] " .. (string.gsub(m, "|c%x%x%x%x%x%x%x%x", ""))) end }
 UISpecialFrames = {}
@@ -461,6 +463,12 @@ do
   check(count == nForges + 1, "the Goldshire forge is not listed twice")
   player.map, player.x, player.y = 1429, 0.42, 0.65
   CF.profs.blacksmithing = nil
+end
+do
+  local b = CraftingForeverMinimapButton
+  local x, y = b._point[4], b._point[5]
+  local r = math.sqrt(x * x + y * y)
+  check(r >= 99 + 8, string.format("minimap button sits outside the minimap rim (%.0f px from center, rim at 99)", r))
 end
 CF.ToggleTracker()
 CF.ToggleTracker()

@@ -476,10 +476,21 @@ end)
 -- minimap button
 -------------------------------------------------------------------------------
 
+-- Places the button on the minimap's rim at the saved angle. The radius comes
+-- from the minimap's real size (it differs between clients and UI scales);
+-- square minimaps (GetMinimapShape) get the button on the square's edge.
 local function positionMinimapButton(b)
   local a = math.rad(CF.settings.minimapButtonAngle)
+  local x, y = math.cos(a), math.sin(a)
+  local rx = Minimap:GetWidth() / 2 + 10
+  local ry = Minimap:GetHeight() / 2 + 10
+  local shape = GetMinimapShape and GetMinimapShape() or "ROUND"
+  if shape == "SQUARE" then
+    local m = math.max(math.abs(x), math.abs(y))
+    x, y = x / m, y / m
+  end
   b:ClearAllPoints()
-  b:SetPoint("CENTER", Minimap, "CENTER", 80 * math.cos(a), 80 * math.sin(a))
+  b:SetPoint("CENTER", Minimap, "CENTER", x * rx, y * ry)
 end
 
 CF.On("INIT", function()
@@ -525,4 +536,7 @@ CF.On("INIT", function()
   end)
   b:SetScript("OnLeave", function(self, button) GameTooltip:Hide() end)
   positionMinimapButton(b)
+  -- follow minimap size changes (UI scale, other addons resizing it)
+  Minimap:HookScript("OnSizeChanged", function() positionMinimapButton(b) end)
+  CF.RegisterEvent("PLAYER_ENTERING_WORLD", function() positionMinimapButton(b) end)
 end)
