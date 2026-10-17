@@ -21,6 +21,8 @@ An addon for **WoW: Forever** (Blizzard's Forever client: Interface `16001`, mod
 - Characters with Mining or Blacksmithing see forges (for smelting, including goblin smelting pots) and, for Blacksmithing, anvils on the world map and minimap. There are 84 forges and 190 anvils, including the capital cities.
 - The tracker shows the nearest forge and anvil in your zone with distance and coordinates. `/cf nearest` prints them in chat.
 - Toggle with *Show anvils & forges* in the Routes tab.
+- **Adventure mode** (*Adventure mode: only used ones*) hides every anvil and forge until this character has used it. Smelting discovers the forge and blacksmithing discovers the anvil. Discoveries are saved per character and announced in chat.
+- A station you use that is missing from the bundled data is saved where you stood, so it appears from then on in both modes.
 
 **Leveling guides (automatic)**
 - Your professions and skill levels are read automatically. The guide tab shows the guides for your professions, and the current step is highlighted.

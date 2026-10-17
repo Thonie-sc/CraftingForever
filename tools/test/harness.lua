@@ -419,6 +419,49 @@ CF.SetActiveRoute(nil)
 CF.settings.showStations = true
 CF.UpdateWorldMap()
 check(icons.world == 5 + nForges, "forges shown on the world map next to gathered nodes")
+-- adventure mode: only anvils/forges this character has used
+do
+  CF.settings.adventureMode = true
+  local count = 0
+  CF.ForEachStation("forge", function() count = count + 1 end)
+  check(count == 0, "adventure mode starts with no forges shown")
+  check(CF.NearestStation("forge") == nil, "adventure mode: no nearest forge yet")
+  check(string.find(CF.NearestStationsText(), CF.L["%s: none discovered in this zone"]:sub(5, 12), 1, true),
+    "tracker says none discovered: " .. CF.NearestStationsText())
+
+  -- smelting next to Goldshire's forge discovers it (snapped to the real forge)
+  player.map, player.x, player.y = 1429, 0.414, 0.656
+  fire("UNIT_SPELLCAST_SUCCEEDED", "player", "s1", 2657)  -- Smelt Copper
+  local fx, fy, fd = CF.NearestStation("forge")
+  check(fx and math.abs(fx - 41.5) < 0.05 and math.abs(fy - 65.7) < 0.05, "used forge discovered at its real spot")
+  fire("UNIT_SPELLCAST_SUCCEEDED", "player", "s2", 2657)
+  check(#CF.cdb.stations[1429].forge == 1, "smelting there again adds nothing")
+  count = 0
+  CF.ForEachStation("forge", function() count = count + 1 end)
+  check(count == 1, "exactly the used forge is shown")
+
+  -- blacksmithing at the anvil (the client tells us which window is open)
+  CF.profs.blacksmithing = { rank = 10, max = 75 }
+  function GetTradeSkillLine() return CF.ProfName("blacksmithing") end
+  fire("TRADE_SKILL_SHOW")
+  fire("UNIT_SPELLCAST_SUCCEEDED", "player", "s3", 2660)  -- Rough Sharpening Stone
+  check(CF.cdb.stations[1429].anvil and #CF.cdb.stations[1429].anvil == 1, "anvil discovered by blacksmithing")
+  fire("TRADE_SKILL_CLOSE")
+
+  -- a forge missing from the bundled data is remembered where it was used
+  player.map, player.x, player.y = 1413, 0.5, 0.5
+  fire("UNIT_SPELLCAST_SUCCEEDED", "player", "s4", 2657)
+  check(CF.cdb.stations[1413] and CF.cdb.stations[1413].forge[1][1] == 50, "unknown forge stored at the player's position")
+  CF.settings.adventureMode = false
+  local seen = false
+  CF.ForEachStation("forge", function(map, x, y) if map == 1413 and x == 50 then seen = true end end)
+  check(seen, "used forges missing from the data also show outside adventure mode")
+  count = 0
+  CF.ForEachStation("forge", function() count = count + 1 end)
+  check(count == nForges + 1, "the Goldshire forge is not listed twice")
+  player.map, player.x, player.y = 1429, 0.42, 0.65
+  CF.profs.blacksmithing = nil
+end
 CF.ToggleTracker()
 CF.ToggleTracker()
 SlashCmdList["CRAFTINGFOREVER"]("help")
@@ -460,7 +503,7 @@ if LOCALE ~= "enUS" then
   end
   for _, r in ipairs(CF.TRAINER_RANKS) do keys[r.rank] = true end
   for _, k in ipairs({ "Routes", "Leveling Guide", "Show gathered nodes", "Show route", "Minimap icons",
-                       "Show anvils & forges" }) do keys[k] = true end
+                       "Show anvils & forges", "Adventure mode: only used ones" }) do keys[k] = true end
   for _, def in pairs(CF.STATIONS) do keys[def.label] = true end
   local tr = CF.TRANSLATIONS[LOCALE]
   for k in pairs(keys) do

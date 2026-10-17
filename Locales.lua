@@ -50,6 +50,9 @@ T.deDE = {
   ["Forge"] = "Schmiede",
   ["%s: %d yd (%.1f, %.1f)"] = "%s: %d Yards (%.1f, %.1f)",
   ["%s: none in this zone"] = "%s: keine in diesem Gebiet",
+  ["%s: none discovered in this zone"] = "%s: noch keine in diesem Gebiet entdeckt",
+  ["Adventure mode: only used ones"] = "Abenteuermodus: nur benutzte",
+  ["Discovered: %s in %s (%.1f, %.1f)"] = "Entdeckt: %s in %s (%.1f, %.1f)",
   ["None of your professions uses anvils or forges."] = "Keiner deiner Berufe benötigt Ambosse oder Schmieden.",
   -- guide tab / tracker
   ["All guides"] = "Alle Anleitungen",
@@ -148,6 +151,9 @@ T.esES = {
   ["Forge"] = "Forja",
   ["%s: %d yd (%.1f, %.1f)"] = "%s: %d m (%.1f, %.1f)",
   ["%s: none in this zone"] = "%s: no hay en esta zona",
+  ["%s: none discovered in this zone"] = "%s: aún no descubierto en esta zona",
+  ["Adventure mode: only used ones"] = "Modo aventura: solo los usados",
+  ["Discovered: %s in %s (%.1f, %.1f)"] = "Descubierto: %s en %s (%.1f, %.1f)",
   ["None of your professions uses anvils or forges."] = "Ninguna de tus profesiones usa yunques ni forjas.",
   -- guide tab / tracker
   ["All guides"] = "Todas las guías",

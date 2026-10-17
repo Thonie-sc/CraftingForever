@@ -18,6 +18,7 @@ local DEFAULTS = {
   showRoute = true,       -- active route on the world map
   minimapPins = true,     -- gathered + route nodes on the minimap
   showStations = true,    -- anvils and forges for mining / blacksmithing
+  adventureMode = false,  -- only show anvils/forges this character has used
   hideHighZones = true,   -- route finder skips zones far above your level
   hideEnemyZones = true,  -- route finder skips the other faction's territory
   pinSize = 14,
@@ -149,6 +150,7 @@ CF.RegisterEvent("ADDON_LOADED", function(name)
   local cdb = CraftingForeverCharDB
   cdb.selected = cdb.selected or {}   -- [material] = true
   cdb.recipeColor = cdb.recipeColor or {}
+  cdb.stations = cdb.stations or {}   -- [uiMapID][kind] = { {x, y}, ... } anvils/forges used
   if cdb.trackerShown == nil then cdb.trackerShown = true end
 
   CF.db = db
